@@ -1,33 +1,38 @@
-from hmac import new
-import json
 import mediapipe as mp
 import cv2
-import time
+import csv
 import numpy as np
-import argparse
+import pandas as PD
 
-# Initialize the parser
-parser = argparse.ArgumentParser("Config")
-parser.add_argument("--saveImage", required=False)
-args = parser.parse_args()
+# result classes
+from gesture_recognition_result import Gesture
 
-BaseOptions = mp.tasks.BaseOptions
-GestureRecognizer = mp.tasks.vision.GestureRecognizer
-GestureRecognizerOptions = mp.tasks.vision.GestureRecognizerOptions
-GestureRecognizerResult = mp.tasks.vision.GestureRecognizerResult
-VisionRunningMode = mp.tasks.vision.RunningMode
+# variables
+args = None
+gestures_dataset = None
+stored_gestures_names = None
+CAP_HEIGHT = None
+CAP_WIDTH = None
 
-model_asset_path = "./gesture_recognizer.task"
+def initialize_helper_variables(_args, _width, _height):
+    global args, CAP_WIDTH, CAP_HEIGHT
+    args = _args
+    CAP_WIDTH = _width
+    CAP_HEIGHT = _height
+    
+    # load csv files
+    reload_csv("gestures")
 
-IMAGE_WIDTH = 680
-IMAGE_HEIGHT = 680
+def reload_csv(filename):
+    global gestures_dataset
+    global stored_gestures_names
+    gestures_dataset = PD.read_csv(f'{filename}.csv')
+    stored_gestures_names = gestures_dataset.iloc[:, 0].values
 
-# open camera and start capturing frames
-cap = cv2.VideoCapture(0)
-CAP_WIDTH = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-CAP_HEIGHT = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-# FUNCTIONS
+def write_toCsv(filename, data):
+    with open(file=f"{filename}.csv", mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(data)
 
 def writeToFile(filename, data):
     with open(filename, "w") as file:
@@ -54,8 +59,13 @@ def process_result(result, output_image, timestamp_ms):
     # if anything was found by the frame save the image to disk
     found_something = False
     if len(result.gestures) > 0:
+        global stored_gestures_names
         found_something = True
-        print(f"Gestures - {result.gestures}")
+        for index in range(0, len(result.gestures)):
+            gesture = Gesture.from_category(result.gestures[index][0])
+            if gesture.categoryName != 'None' and not stored_gestures_names.__contains__(gesture.categoryName):
+                write_toCsv("gestures", gesture.csv_data())
+                reload_csv("gestures")
 
     if len(result.handedness) > 0:
         found_something = True
@@ -75,33 +85,3 @@ def process_result(result, output_image, timestamp_ms):
             cv2.imwrite(filename, output_image.numpy_view())
         except Exception as e:
             print(f"error showing the gesture recognition frame - {e}")
-
-if not cap.isOpened():
-    print("Error: could not access the camera.")
-    exit()
-
-options = GestureRecognizerOptions(
-    base_options=BaseOptions(model_asset_path),
-    running_mode=VisionRunningMode.LIVE_STREAM,
-    result_callback=process_result,
-)
-recognizer = GestureRecognizer.create_from_options(options)
-
-# capture frames in a loop
-while True:
-    ret,frame = cap.read()
-    if not ret:
-        print("failed to capture video")
-        break
-
-    # Exit the loop when 'q' key is pressed
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-    # this will show that current frame from the camera
-    cv2.imshow("Camera", frame)
-
-    mp_image = mp.Image(mp.ImageFormat.SRGB, frame)
-    mp_timestamp = mp.Timestamp(int(time.time() * 100))
-
-    recognizer.recognize_async(mp_image, int(time.time() * 100))
