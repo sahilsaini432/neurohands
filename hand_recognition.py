@@ -8,7 +8,11 @@ from helpers import initialize_helper_variables, process_result
 
 # Initialize the parser
 parser = argparse.ArgumentParser("Config")
-parser.add_argument("--saveImage", required=False)
+parser.add_argument("--si", required=False)
+parser.add_argument("--cgd", required=False)
+parser.add_argument("--chd", required=False)
+parser.add_argument("--chld", required=False)
+parser.add_argument("--chwld", required=False)
 args = parser.parse_args()
 
 # open camera and start capturing frames

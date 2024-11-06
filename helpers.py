@@ -58,7 +58,7 @@ def mediapipe_image_to_matlike(mediapipe_image):
 def process_result(result, output_image, timestamp_ms):
     # if anything was found by the frame save the image to disk
     found_something = False
-    if len(result.gestures) > 0:
+    if args.cgd is not None and len(result.gestures) > 0:
         global stored_gestures_names
         found_something = True
         for index in range(0, len(result.gestures)):
@@ -67,19 +67,19 @@ def process_result(result, output_image, timestamp_ms):
                 write_toCsv("gestures", gesture.csv_data())
                 reload_csv("gestures")
 
-    if len(result.handedness) > 0:
+    if args.chd is not None and len(result.handedness) > 0:
         found_something = True
         # print(f"Handedness - {result.handedness}")
 
-    if len(result.hand_landmarks) > 0:
+    if args.chld is not None and len(result.hand_landmarks) > 0:
         found_something = True
         # print(f"Hand Landmarks - {result.hand_landmarks}")
 
-    if len(result.hand_world_landmarks) > 0:
+    if args.chwld is not None and len(result.hand_world_landmarks) > 0:
         found_something = True
         # print(f"Hand World Landmarks - {result.hand_world_landmarks}")
 
-    if args.saveImage is not None and found_something is True:
+    if args.si is not None and found_something is True:
         try:
             filename = f"{timestamp_ms}.jpg"
             cv2.imwrite(filename, output_image.numpy_view())
