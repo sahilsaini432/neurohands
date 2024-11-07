@@ -3,12 +3,12 @@ import cv2
 import time
 import argparse
 
-# helpers
-from helpers import initialize_helper_variables, process_result
+from gesture_helper import initialize_helper_variables, process_result
 
 # Initialize the parser
 parser = argparse.ArgumentParser("Config")
 parser.add_argument("--si", required=False)
+parser.add_argument("--shi", required=False)
 parser.add_argument("--cgd", required=False)
 parser.add_argument("--chd", required=False)
 parser.add_argument("--chld", required=False)
