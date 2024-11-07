@@ -14,6 +14,16 @@ stored_gestures_names = None
 CAP_HEIGHT = None
 CAP_WIDTH = None
 
+Images = []
+
+def current_image(image):
+    global Images
+    Images.append(image)
+
+def last_image():
+    global Images
+    return Images.pop()
+
 def initialize_helper_variables(_args, _width, _height):
     global args, CAP_WIDTH, CAP_HEIGHT
     args = _args
@@ -55,7 +65,7 @@ def mediapipe_image_to_matlike(mediapipe_image):
     return image_array
 
 # create a gesture recognizer instance with the live stream mode:
-def process_result(result, output_image, timestamp_ms):
+def process_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int): # type: ignore
     # if anything was found by the frame save the image to disk
     found_something = False
     if args.cgd is not None and len(result.gestures) > 0:
@@ -79,9 +89,23 @@ def process_result(result, output_image, timestamp_ms):
         found_something = True
         # print(f"Hand World Landmarks - {result.hand_world_landmarks}")
 
+    if args.shpi is not None:
+        show_processed_image(last_image(), result)
+
+    # for saving image to disk
     if args.si is not None and found_something is True:
         try:
             filename = f"{timestamp_ms}.jpg"
             cv2.imwrite(filename, output_image.numpy_view())
         except Exception as e:
             print(f"error showing the gesture recognition frame - {e}")
+
+def show_processed_image(image, result):
+    numpy_image = image.numpy_view()
+    gesture = result.gestures[0][0]
+    hand_landmarks = result.hand_landmarks
+    
+    # Size and spacing.
+    FIGSIZE = 13.0
+    SPACING = 0.1
+    subplot=(1,1,1)
