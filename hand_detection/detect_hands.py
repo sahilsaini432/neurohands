@@ -44,7 +44,7 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
                 # Display the hand label on the frame
                 h, w, _ = frame.shape
                 x, y = int(wrist.x * w), int(wrist.y * h)
-                cv2.putText(frame, processed_hands[index], (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+                cv2.putText(frame, processed_hands[index], (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                 index = index + 1
 
         # Display frame
