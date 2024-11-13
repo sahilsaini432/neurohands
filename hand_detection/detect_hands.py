@@ -1,15 +1,16 @@
 import mediapipe as mp
 import cv2
 import argparse
-from pathlib import Path
+import os
 from pprint import pprint as _print
 
-from detect_hands_helper import HandLandmark
+from detect_hands_helper import HandLandmark, process_image
 
 # Initialize the parser
 parser = argparse.ArgumentParser("Config")
 parser.add_argument("--live", required=False)
 parser.add_argument("--photo", required=False)
+parser.add_argument("--dir", required=False)
 parser.add_argument("--input", required=False)
 parser.add_argument("--save", required=False)
 args = parser.parse_args()
@@ -74,22 +75,17 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
             print("missing input image path")
             exit(0)
         
-        frame = cv2.imread(args.input)
-        frame = cv2.flip(frame, 1)
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        result = hands.process(frame_rgb)
+        if args.save == "true": save = True
+        else: save = False
+        process_image(hands, args.input, save)
+
+    elif args.dir == "true":
+        if args.input is None:
+            print("missing dir path")
+            exit(0)
         
-        for hand_landmarks in result.multi_hand_landmarks:
-            if args.save == "true":
-                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
-                            mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=4, circle_radius=8),
-                            mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=4, circle_radius=4))
-        
-        if args.save == "true":
-            # save the update frame
-            filename = Path(args.input).name.split(".")
-            filename.remove("jpg")
-            filename = ".".join(filename)
-            filename = f"./output_images/{filename}-output.jpg"
-            
-            cv2.imwrite(filename, frame)
+        for filename in os.listdir(args.input):
+            filepath = os.path.join(args.input, filename)
+            if args.save == "true": save = True
+            else: save = False
+            process_image(hands, filepath, save)
