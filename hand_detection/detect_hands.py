@@ -8,31 +8,31 @@ from detect_hands_helper import HandLandmark, process_image
 
 # Initialize the parser
 parser = argparse.ArgumentParser("Config")
-parser.add_argument("--live", required=False)
-parser.add_argument("--photo", required=False)
-parser.add_argument("--dir", required=False)
-parser.add_argument("--input", required=False)
-parser.add_argument("--save", required=False)
+parser.add_argument("-l", "--live", required=False, action="store_true")
+parser.add_argument("-p", "--photo", required=False, action="store_true")
+parser.add_argument("-d", "--dir", required=False, action="store_true")
+parser.add_argument("-i", "--input", required=False, type=str)
+parser.add_argument("-s", "--save", required=False, action="store_true")
 args = parser.parse_args()
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
 
 with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confidence=0.5) as hands:
-    if args.live == "true":
+    if args.live is True:
         # open camera and start capturing frames
         cap = cv2.VideoCapture(0)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
         if not cap.isOpened():
-            print("Error: could not access the camera.")
+            print("ERROR: could not access the camera.")
             exit()
 
         while True:
             ret, frame = cap.read()
             if not ret:
-                print("failed to capture video")
+                print("ERROR: failed to capture video")
                 break
             frame = cv2.flip(frame, 1)
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -70,22 +70,20 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
         cap.release()
         cv2.destroyAllWindows()
 
-    elif args.photo == "true":
+    elif args.photo is True:
         if args.input is None:
-            print("missing input image path")
+            print("ERROR: missing input image path")
             exit(0)
         
         if args.save == "true": save = True
         else: save = False
         process_image(hands, args.input, save)
 
-    elif args.dir == "true":
+    elif args.dir is True:
         if args.input is None:
-            print("missing dir path")
+            print("ERROR: missing dir path")
             exit(0)
         
         for filename in os.listdir(args.input):
             filepath = os.path.join(args.input, filename)
-            if args.save == "true": save = True
-            else: save = False
-            process_image(hands, filepath, save)
+            process_image(hands, filepath, args.save)
