@@ -165,3 +165,4 @@ cython_debug/
 *.task
 *.jpg
 .vscode/settings.json
+.DS_Store
