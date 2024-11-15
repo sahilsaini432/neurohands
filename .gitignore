@@ -164,5 +164,7 @@ cython_debug/
 
 *.task
 *.jpg
+*.png
 .vscode/settings.json
 .DS_Store
+samples/

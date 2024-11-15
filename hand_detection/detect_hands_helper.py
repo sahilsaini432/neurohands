@@ -1,5 +1,6 @@
 from enum import Enum
 import json
+from math import pi
 import pickle
 from google.protobuf.json_format import MessageToDict
 import mediapipe as mp
@@ -11,6 +12,8 @@ from pathlib import Path
 from pprint import pprint as _print
 from typing import List, Dict, Any
 from dataclasses import dataclass, asdict, field
+from PIL import Image, PngImagePlugin
+from PIL.ExifTags import TAGS
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
@@ -71,6 +74,22 @@ class HandLandmarks:
         data['landmarks'] = [Landmark(**landmark) for landmark in data.get('landmarks', [])]
         return HandLandmarks(**data)
 
+def get_exif_data(inputfile):
+    image = Image.open(inputfile)
+    exif_data = image._getexif()
+    for tagID, value in exif_data.items():
+        print(f"[SAHIL] {TAGS.get(tagID, tagID)}: {value}")
+
+def encode_hand_landmarks(landmarks):
+    custom_hand_landmarks = HandLandmarks.from_hand_landmarks(landmarks)
+    encoded_hand_landmarks = base64.b64encode(custom_hand_landmarks.to_json().encode("utf-8")).decode("utf-8")
+    return encoded_hand_landmarks
+
+def decode_hand_landmarks(encodedString):
+    decoded_string = base64.b64decode(encodedString).decode("utf-8")
+    decoded_hand_landmarks = HandLandmarks.from_json(decoded_string)
+    return decoded_hand_landmarks
+
 def process_image(hands, inputfile, save):
     frame = cv2.imread(inputfile)
     frame = cv2.flip(frame, 1)
@@ -78,6 +97,7 @@ def process_image(hands, inputfile, save):
     result = hands.process(frame_rgb)
     
     processed_hands = []
+    metadata = {}
     
     if result.multi_handedness:
         for handedness in result.multi_handedness:
@@ -91,20 +111,33 @@ def process_image(hands, inputfile, save):
                 mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2))
             
             # encoding hand landmarks
-            custom_hand_landmarks = HandLandmarks.from_hand_landmarks(hand_landmarks)
-            encoded_hand_landmarks = base64.b64encode(custom_hand_landmarks.to_json().encode("utf-8")).decode("utf-8")
+            ecoded_landmarks = encode_hand_landmarks(hand_landmarks)
             
-            # decoding hand landmarks
-            decoded_string = base64.b64decode(encoded_hand_landmarks).decode("utf-8")
-            decoded_hand_landmarks = HandLandmarks.from_json(decoded_string)
-            _print(decoded_hand_landmarks.landmarks)
+            metadata[processed_hands[index]] = ecoded_landmarks
             index = index + 1
+    
+    # load exif data
+    dataImage = Image.open(f"./output_images/d-output.png")
+    ecodedData = dataImage.info["Left"]
+    dataImageLandmarks = decode_hand_landmarks(ecodedData)
+    pinky_tip_values = dataImageLandmarks.landmarks[HandLandmark.PINKY_TIP.value]
+    
+    # get the same value from current image
+    current_pinky_tip_value = result.multi_hand_landmarks[0].landmark[HandLandmark.PINKY_TIP.value]
+    
+    _print(f"pinky_tip_values -: {pinky_tip_values}")
+    _print(f"current_pinky_tip_value -: {current_pinky_tip_value}")
     
     if save is True:
         # save the update frame
         filename = Path(inputfile).name.split(".")
         filename.remove("jpg")
         filename = ".".join(filename)
-        filename = f"./output_images/{filename}-output.jpg"
-        
-        cv2.imwrite(filename, frame)
+        filename = f"./output_images/{filename}-output.png"
+
+        # save metadata
+        pil_image = Image.fromarray(frame)
+        meta = PngImagePlugin.PngInfo()
+        for key, value in metadata.items():
+            meta.add_text(key, value)
+        pil_image.save(filename, "PNG", pnginfo=meta)

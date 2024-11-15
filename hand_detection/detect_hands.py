@@ -8,11 +8,12 @@ from detect_hands_helper import HandLandmark, process_image
 
 # Initialize the parser
 parser = argparse.ArgumentParser("Config")
-parser.add_argument("-l", "--live", required=False, action="store_true")
-parser.add_argument("-p", "--photo", required=False, action="store_true")
-parser.add_argument("-d", "--dir", required=False, action="store_true")
-parser.add_argument("-i", "--input", required=False, type=str)
-parser.add_argument("-s", "--save", required=False, action="store_true")
+parser.add_argument("-l", "--live", required=False, action="store_true", help="Live hand detection")
+parser.add_argument("-p", "--photo", required=False, action="store_true", help="Photo hand detection")
+parser.add_argument("-d", "--dir", required=False, action="store_true", help="Detect photo from directory")
+parser.add_argument("-i", "--input", required=False, type=str, help="Input path for file or directory")
+parser.add_argument("-s", "--save", required=False, action="store_true", help="Save the processed frame/s")
+parser.add_argument("-c", "--crop", required=False, action="store_true", help="Crop images to only show hands")
 args = parser.parse_args()
 
 mp_drawing = mp.solutions.drawing_utils
