@@ -1,10 +1,11 @@
+from ast import arg
 import mediapipe as mp
 import cv2
 import argparse
 import os
 from pprint import pprint as _print
 
-from detect_hands_helper import HandLandmark, process_image
+from detect_hands_helper import HandLandmark, get_view_dimensions, process_image
 
 # Initialize the parser
 parser = argparse.ArgumentParser("Config")
@@ -18,6 +19,10 @@ args = parser.parse_args()
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
+
+# Define the coordinates and size of the square region of interest (ROI)
+x, y = 100, 100  # Top-left corner of the square
+width, height = 200, 200  # Width and height of the square (same value for a square)
 
 with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confidence=0.5) as hands:
     if args.live is True:
@@ -36,9 +41,16 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
                 print("ERROR: failed to capture video")
                 break
             frame = cv2.flip(frame, 1)
+            
+            # offset = width / 4
+            if args.crop is True:
+                dimensions = get_view_dimensions(frame, x_offset=250,y_offset=350, width=700, height=700)
+                cv2.rectangle(frame, (dimensions["x_start"], dimensions["y_start"]), (dimensions["x_end"], dimensions["y_end"]), (0, 255, 0), 2)
+                frame = frame[dimensions["y_start"]:dimensions["y_end"], dimensions["x_start"]:dimensions["x_end"]]
+
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             result = hands.process(frame_rgb)
-
+            
             if result.multi_hand_landmarks:
                 for hand_landmarks in result.multi_hand_landmarks:
                     mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
@@ -63,7 +75,7 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
             print("ERROR: missing input image path")
             exit(0)
         
-        process_image(hands, args.input, args.save)
+        process_image(hands, args)
 
     elif args.dir is True:
         if args.input is None:
@@ -72,4 +84,4 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
         
         for filename in os.listdir(args.input):
             filepath = os.path.join(args.input, filename)
-            process_image(hands, filepath, args.save)
+            process_image(hands, args)

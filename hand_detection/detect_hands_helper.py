@@ -74,11 +74,11 @@ class HandLandmarks:
         data['landmarks'] = [Landmark(**landmark) for landmark in data.get('landmarks', [])]
         return HandLandmarks(**data)
 
-def get_exif_data(inputfile):
+def get_exif_data(inputfile, key):
     image = Image.open(inputfile)
-    exif_data = image._getexif()
-    for tagID, value in exif_data.items():
-        print(f"[SAHIL] {TAGS.get(tagID, tagID)}: {value}")
+    encodedData = image.info[key]
+    dataImageLandmarks = decode_hand_landmarks(encodedData)
+    return dataImageLandmarks
 
 def encode_hand_landmarks(landmarks):
     custom_hand_landmarks = HandLandmarks.from_hand_landmarks(landmarks)
@@ -90,8 +90,8 @@ def decode_hand_landmarks(encodedString):
     decoded_hand_landmarks = HandLandmarks.from_json(decoded_string)
     return decoded_hand_landmarks
 
-def process_image(hands, inputfile, save):
-    frame = cv2.imread(inputfile)
+def process_image(hands, args):
+    frame = cv2.imread(args.input)
     frame = cv2.flip(frame, 1)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     result = hands.process(frame_rgb)
@@ -105,32 +105,24 @@ def process_image(hands, inputfile, save):
     
     index = 0
     for hand_landmarks in result.multi_hand_landmarks:
-        if save is True:
+        if args.save is True:
             mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
                 mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=4),
                 mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2))
             
+            # if cropping image
+            if args.crop is True:
+                frame = crop_hand(frame=frame, hand_landmarks=hand_landmarks,offset=100)
+
             # encoding hand landmarks
             ecoded_landmarks = encode_hand_landmarks(hand_landmarks)
             
             metadata[processed_hands[index]] = ecoded_landmarks
             index = index + 1
     
-    # load exif data
-    dataImage = Image.open(f"./output_images/d-output.png")
-    ecodedData = dataImage.info["Left"]
-    dataImageLandmarks = decode_hand_landmarks(ecodedData)
-    pinky_tip_values = dataImageLandmarks.landmarks[HandLandmark.PINKY_TIP.value]
-    
-    # get the same value from current image
-    current_pinky_tip_value = result.multi_hand_landmarks[0].landmark[HandLandmark.PINKY_TIP.value]
-    
-    _print(f"pinky_tip_values -: {pinky_tip_values}")
-    _print(f"current_pinky_tip_value -: {current_pinky_tip_value}")
-    
-    if save is True:
+    if args.save is True:
         # save the update frame
-        filename = Path(inputfile).name.split(".")
+        filename = Path(args.input).name.split(".")
         filename.remove("jpg")
         filename = ".".join(filename)
         filename = f"./output_images/{filename}-output.png"
@@ -141,3 +133,25 @@ def process_image(hands, inputfile, save):
         for key, value in metadata.items():
             meta.add_text(key, value)
         pil_image.save(filename, "PNG", pnginfo=meta)
+
+def get_view_dimensions(frame, x_offset, y_offset, width, height):
+    dimensions = {}
+    frame_height, frame_width, _ = frame.shape
+    x_center = frame_width / 2
+    y_center = frame_height / 2
+    
+    dimensions["x_start"] = int(x_center - x_offset)
+    dimensions["y_start"] = int(y_center - y_offset)
+    dimensions["x_end"] = int(dimensions["x_start"] + width)
+    dimensions["y_end"] = int(dimensions["y_start"] + height)
+    return dimensions
+
+def crop_hand(frame, hand_landmarks,offset):
+    image_height, image_width, _ = frame.shape
+    x_coords = [int(landmark.x * image_width) for landmark in hand_landmarks.landmark]
+    y_coords = [int(landmark.y * image_height) for landmark in hand_landmarks.landmark]
+    
+    # Calculate the bounding box around the hand
+    x_min, x_max = max(0, min(x_coords)), min(image_width, max(x_coords))
+    y_min, y_max = max(0, min(y_coords)), min(image_height, max(y_coords))
+    return frame[y_min-offset:y_max+offset, x_min-offset:x_max+offset]
