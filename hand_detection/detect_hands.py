@@ -15,6 +15,7 @@ parser.add_argument("-d", "--dir", required=False, action="store_true", help="De
 parser.add_argument("-i", "--input", required=False, type=str, help="Input path for file or directory")
 parser.add_argument("-s", "--save", required=False, action="store_true", help="Save the processed frame/s")
 parser.add_argument("-c", "--crop", required=False, action="store_true", help="Crop images to only show hands")
+parser.add_argument("-t", "--transparent", required=False, action="store_true", help="save transparent image with landmark")
 args = parser.parse_args()
 
 mp_drawing = mp.solutions.drawing_utils

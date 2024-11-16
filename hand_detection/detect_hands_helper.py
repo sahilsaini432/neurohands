@@ -8,6 +8,7 @@ import cv2
 import argparse
 import os
 import base64
+import numpy as np
 from pathlib import Path
 from pprint import pprint as _print
 from typing import List, Dict, Any
@@ -106,10 +107,20 @@ def process_image(hands, args):
     index = 0
     for hand_landmarks in result.multi_hand_landmarks:
         if args.save is True:
+            # change the frame to transparent if needed
+            if args.transparent is True:
+                height, width, _ = frame.shape
+                frame = np.zeros((height, width, 3), dtype=np.uint8)
+
             mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
                 mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=4),
                 mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2))
             
+            if args.transparent is True:
+                transparent_frame = np.zeros((height, width, 4), dtype=np.uint8)
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
+                transparent_frame = cv2.addWeighted(transparent_frame, 1.0, frame, 1.0, 0)
+
             # if cropping image
             if args.crop is True:
                 frame = crop_hand(frame=frame, hand_landmarks=hand_landmarks,offset=100)
