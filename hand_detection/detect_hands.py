@@ -16,6 +16,7 @@ parser.add_argument("-i", "--input", required=False, type=str, help="Input path 
 parser.add_argument("-s", "--save", required=False, action="store_true", help="Save the processed frame/s")
 parser.add_argument("-c", "--crop", required=False, action="store_true", help="Crop images to only show hands")
 parser.add_argument("-t", "--transparent", required=False, action="store_true", help="save transparent image with landmark")
+parser.add_argument("-sh", "--shrink", required=False, action="store_true", help="shrink the fame before saving")
 args = parser.parse_args()
 
 mp_drawing = mp.solutions.drawing_utils
@@ -76,7 +77,7 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
             print("ERROR: missing input image path")
             exit(0)
         
-        process_image(hands, args)
+        process_image(hands,args.input, args)
 
     elif args.dir is True:
         if args.input is None:
@@ -85,4 +86,4 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
         
         for filename in os.listdir(args.input):
             filepath = os.path.join(args.input, filename)
-            process_image(hands, args)
+            process_image(hands, filepath, args)

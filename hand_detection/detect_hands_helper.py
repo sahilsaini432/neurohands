@@ -18,6 +18,8 @@ from PIL.ExifTags import TAGS
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
+shrink_width = 550
+shrink_height = 700
 
 class HandLandmark(Enum):
     WRIST = 0
@@ -91,8 +93,8 @@ def decode_hand_landmarks(encodedString):
     decoded_hand_landmarks = HandLandmarks.from_json(decoded_string)
     return decoded_hand_landmarks
 
-def process_image(hands, args):
-    frame = cv2.imread(args.input)
+def process_image(hands, filepath, args):
+    frame = cv2.imread(filepath)
     frame = cv2.flip(frame, 1)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     result = hands.process(frame_rgb)
@@ -133,11 +135,15 @@ def process_image(hands, args):
     
     if args.save is True:
         # save the update frame
-        filename = Path(args.input).name.split(".")
+        filename = Path(filepath).name.split(".")
         filename.remove("jpg")
         filename = ".".join(filename)
         filename = f"./output_images/{filename}-output.png"
-
+        
+        # shrink frame if needed
+        if args.shrink is True:
+            frame = cv2.resize(frame, (shrink_width, shrink_height), interpolation=cv2.INTER_AREA)
+        
         # save metadata
         pil_image = Image.fromarray(frame)
         meta = PngImagePlugin.PngInfo()
