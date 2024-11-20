@@ -19,7 +19,7 @@ from PIL.ExifTags import TAGS
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
 shrink_width = 550
-shrink_height = 700
+shrink_height = 550
 
 class HandLandmark(Enum):
     WRIST = 0
@@ -111,21 +111,15 @@ def process_image(hands, filepath, args):
         if args.save is True:
             # change the frame to transparent if needed
             if args.transparent is True:
-                height, width, _ = frame.shape
-                frame = np.zeros((height, width, 3), dtype=np.uint8)
-
-            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
-                mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=4),
-                mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2))
+                frame = np.zeros(shape=(shrink_height, shrink_width, 3), dtype=np.uint8)
             
-            if args.transparent is True:
-                transparent_frame = np.zeros((height, width, 4), dtype=np.uint8)
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
-                transparent_frame = cv2.addWeighted(transparent_frame, 1.0, frame, 1.0, 0)
-
-            # if cropping image
-            if args.crop is True:
-                frame = crop_hand(frame=frame, hand_landmarks=hand_landmarks,offset=100)
+            # draw the landmark at the center
+            if args.center is True:
+                frame = draw_in_center(frame=frame, hand_landmarks=hand_landmarks)
+            else:
+                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
+                    mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
+                    mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2))
 
             # encoding hand landmarks
             ecoded_landmarks = encode_hand_landmarks(hand_landmarks)
@@ -163,12 +157,49 @@ def get_view_dimensions(frame, x_offset, y_offset, width, height):
     dimensions["y_end"] = int(dimensions["y_start"] + height)
     return dimensions
 
-def crop_hand(frame, hand_landmarks,offset):
-    image_height, image_width, _ = frame.shape
-    x_coords = [int(landmark.x * image_width) for landmark in hand_landmarks.landmark]
-    y_coords = [int(landmark.y * image_height) for landmark in hand_landmarks.landmark]
+def draw_in_center(frame, hand_landmarks):
+    target_height, target_width, _ = frame.shape
     
-    # Calculate the bounding box around the hand
-    x_min, x_max = max(0, min(x_coords)), min(image_width, max(x_coords))
-    y_min, y_max = max(0, min(y_coords)), min(image_height, max(y_coords))
-    return frame[y_min-offset:y_max+offset, x_min-offset:x_max+offset]
+    x_coords = [landmark.x for landmark in hand_landmarks.landmark]
+    y_coords = [landmark.y for landmark in hand_landmarks.landmark]
+    
+    min_x, max_x = min(x_coords), max(x_coords)
+    min_y, max_y = min(y_coords), max(y_coords)
+
+    # Calculate centering offsets
+    center_x = target_width // 2
+    center_y = target_height // 2
+    box_center_x = (min_x + max_x) / 2 * target_width
+    box_center_y = (min_y + max_y) / 2 * target_height
+
+    offset_x = center_x - box_center_x
+    offset_y = center_y - box_center_y
+    
+    # Draw landmarks centered in the target frame
+    for landmark in hand_landmarks.landmark:
+        # Scale normalized coordinates to the target frame
+        x = int(landmark.x * target_width + offset_x)
+        y = int(landmark.y * target_height + offset_y)
+
+        # Draw a circle at each landmark
+        cv2.circle(frame, (x, y), radius=5, color=(0, 255, 0), thickness=-1)
+        
+    # draw the connections between the landmarks
+    for connection in mp_hands.HAND_CONNECTIONS:
+        start_idx, end_idx = connection
+        start_landmark = hand_landmarks.landmark[start_idx]
+        end_landmark = hand_landmarks.landmark[end_idx]
+
+        # Scale and center start and end points
+        start_point = (
+            int(start_landmark.x * target_width + offset_x),
+            int(start_landmark.y * target_height + offset_y),
+        )
+        end_point = (
+            int(end_landmark.x * target_width + offset_x),
+            int(end_landmark.y * target_height + offset_y),
+        )
+
+        # Draw the connection
+        cv2.line(frame, start_point, end_point, color=(255, 0, 0), thickness=2)
+    return frame

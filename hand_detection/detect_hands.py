@@ -14,7 +14,7 @@ parser.add_argument("-p", "--photo", required=False, action="store_true", help="
 parser.add_argument("-d", "--dir", required=False, action="store_true", help="Detect photo from directory")
 parser.add_argument("-i", "--input", required=False, type=str, help="Input path for file or directory")
 parser.add_argument("-s", "--save", required=False, action="store_true", help="Save the processed frame/s")
-parser.add_argument("-c", "--crop", required=False, action="store_true", help="Crop images to only show hands")
+parser.add_argument("-c", "--center", required=False, action="store_true", help="Draw the landmark at the center of the frame")
 parser.add_argument("-t", "--transparent", required=False, action="store_true", help="save transparent image with landmark")
 parser.add_argument("-sh", "--shrink", required=False, action="store_true", help="shrink the fame before saving")
 args = parser.parse_args()
