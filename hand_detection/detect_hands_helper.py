@@ -18,8 +18,8 @@ from PIL.ExifTags import TAGS
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
-shrink_width = 550
-shrink_height = 550
+save_width = 550
+save_height = 550
 
 class HandLandmark(Enum):
     WRIST = 0
@@ -107,43 +107,41 @@ def process_image(hands, filepath, args):
             processed_hands.append(handedness.classification[0].label)
     
     index = 0
-    for hand_landmarks in result.multi_hand_landmarks:
-        if args.save is True:
-            # change the frame to transparent if needed
-            if args.transparent is True:
-                frame = np.zeros(shape=(shrink_height, shrink_width, 3), dtype=np.uint8)
-            
-            # draw the landmark at the center
-            if args.center is True:
-                frame = draw_in_center(frame=frame, hand_landmarks=hand_landmarks)
-            else:
-                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
-                    mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
-                    mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2))
-
-            # encoding hand landmarks
-            ecoded_landmarks = encode_hand_landmarks(hand_landmarks)
-            
-            metadata[processed_hands[index]] = ecoded_landmarks
-            index = index + 1
+    frames = []
     
-    if args.save is True:
-        # save the update frame
-        filename = Path(filepath).name.split(".")
-        filename.remove("jpg")
-        filename = ".".join(filename)
-        filename = f"./output_images/{filename}-output.png"
-        
-        # shrink frame if needed
-        if args.shrink is True:
-            frame = cv2.resize(frame, (shrink_width, shrink_height), interpolation=cv2.INTER_AREA)
-        
-        # save metadata
-        pil_image = Image.fromarray(frame)
-        meta = PngImagePlugin.PngInfo()
-        for key, value in metadata.items():
-            meta.add_text(key, value)
-        pil_image.save(filename, "PNG", pnginfo=meta)
+    for hand_landmarks in result.multi_hand_landmarks:
+        frame = np.zeros(shape=(save_height, save_width, 3), dtype=np.uint8)
+        # draw the landmark at the center
+        if args.center is True:
+            frame = draw_in_center(frame=frame, hand_landmarks=hand_landmarks)
+        else:
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
+                mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
+                mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2))
+
+        # encoding hand landmarks
+        ecoded_landmarks = encode_hand_landmarks(hand_landmarks)
+        metadata[processed_hands[index]] = ecoded_landmarks
+        index = index + 1
+        frames.append(frame)
+
+    # save the update frame
+    filename = Path(filepath).name.split(".")
+    filename.remove("jpg")
+    filename = ".".join(filename)
+    filename = f"./output_images/{filename}-output.png"
+    
+    # save metadata
+    frame_to_save = None
+    if len(frames) > 1:
+        frame_to_save = np.hstack((frames[0], frames[1]))
+    else:
+        frame_to_save = frames[0]
+    pil_image = Image.fromarray(frame_to_save)
+    meta = PngImagePlugin.PngInfo()
+    for key, value in metadata.items():
+        meta.add_text(key, value)
+    pil_image.save(filename, "PNG", pnginfo=meta)
 
 def get_view_dimensions(frame, x_offset, y_offset, width, height):
     dimensions = {}
