@@ -1,7 +1,9 @@
+from ast import arg
 from enum import Enum
 import json
 from math import pi
 import pickle
+import re
 from google.protobuf.json_format import MessageToDict
 import mediapipe as mp
 import cv2
@@ -93,37 +95,59 @@ def decode_hand_landmarks(encodedString):
     decoded_hand_landmarks = HandLandmarks.from_json(decoded_string)
     return decoded_hand_landmarks
 
-def process_image(hands, filepath, args):
-    frame = cv2.imread(filepath)
-    frame = cv2.flip(frame, 1)
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    result = hands.process(frame_rgb)
-    
+def process_landmark_for_fixed_frame(result, saveMetadata):
     processed_hands = []
     metadata = {}
     
     if result.multi_handedness:
         for handedness in result.multi_handedness:
             processed_hands.append(handedness.classification[0].label)
-    
-    index = 0
+            
     frames = []
     
-    for hand_landmarks in result.multi_hand_landmarks:
-        frame = np.zeros(shape=(save_height, save_width, 3), dtype=np.uint8)
-        # draw the landmark at the center
-        if args.center is True:
+    if result.multi_hand_landmarks:
+        for hand_landmarks in result.multi_hand_landmarks:
+            frame = np.zeros(shape=(save_height, save_width, 3), dtype=np.uint8)
             frame = draw_in_center(frame=frame, hand_landmarks=hand_landmarks)
-        else:
-            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
-                mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
-                mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2))
+            frames.append(frame)
+            
+            if saveMetadata is True:
+                # encoding hand landmarks
+                ecoded_landmarks = encode_hand_landmarks(hand_landmarks)
+                metadata[processed_hands[index]] = ecoded_landmarks
+                index = index + 1
+    
+    frame_to_save = None
+    if len(frames) > 1:
+        frame_to_save = np.hstack((frames[0], frames[1]))
+    else:
+        frame_to_save = frames[0]
 
-        # encoding hand landmarks
-        ecoded_landmarks = encode_hand_landmarks(hand_landmarks)
-        metadata[processed_hands[index]] = ecoded_landmarks
-        index = index + 1
-        frames.append(frame)
+    return frame_to_save, metadata
+
+def process_landmark_for_full_frame(result, incoming_frame):
+    frame_height, frame_width, _ = incoming_frame.shape
+    full_frame = np.zeros(shape=(frame_height, frame_width, 3), dtype=np.uint8)
+    
+    if result.multi_hand_landmarks:
+        for hand_landmarks in result.multi_hand_landmarks:
+                mp_drawing.draw_landmarks(full_frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
+                    mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
+                    mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2))
+
+    return full_frame
+
+def process_landmark_from_image(hands, filepath, args):
+    frame = cv2.imread(filepath)
+    frame = cv2.flip(frame, 1)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    result = hands.process(frame_rgb)
+    
+    frame_to_save = None
+    if args.center is True:
+        frame_to_save, metadata = process_landmark_for_fixed_frame(result,True)
+    else:
+        frame_to_save = process_landmark_for_full_frame(result, frame)
 
     # save the update frame
     filename = Path(filepath).name.split(".")
@@ -131,12 +155,6 @@ def process_image(hands, filepath, args):
     filename = ".".join(filename)
     filename = f"./output_images/{filename}-output.png"
     
-    # save metadata
-    frame_to_save = None
-    if len(frames) > 1:
-        frame_to_save = np.hstack((frames[0], frames[1]))
-    else:
-        frame_to_save = frames[0]
     pil_image = Image.fromarray(frame_to_save)
     meta = PngImagePlugin.PngInfo()
     for key, value in metadata.items():
