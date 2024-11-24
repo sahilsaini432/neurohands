@@ -95,6 +95,28 @@ def decode_hand_landmarks(encodedString):
     decoded_hand_landmarks = HandLandmarks.from_json(decoded_string)
     return decoded_hand_landmarks
 
+def get_save_frame_size():
+    return (save_width*2, save_height)
+
+def add_text_to_frame(text, frame):
+    # Font settings
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    font_thickness = 2
+    font_color = (255, 255, 255)
+
+    # Get the text size
+    (text_width, text_height), baseline = cv2.getTextSize(text, font, font_scale, font_thickness)
+
+    # Calculate the x-coordinate to center the text horizontally
+    x = (frame.shape[1] - text_width) // 2  # Center horizontally
+
+    # Calculate the y-coordinate to position the text at the bottom
+    y = frame.shape[0] - 20 
+
+    # Put the text on the frame
+    return cv2.putText(frame, text, (x, y), font, font_scale, font_color, font_thickness)
+
 def process_landmark_for_fixed_frame(result, saveMetadata):
     processed_hands = []
     metadata = {}
@@ -104,26 +126,25 @@ def process_landmark_for_fixed_frame(result, saveMetadata):
             processed_hands.append(handedness.classification[0].label)
             
     frames = []
-    
+    index = 0
     if result.multi_hand_landmarks:
         for hand_landmarks in result.multi_hand_landmarks:
             frame = np.zeros(shape=(save_height, save_width, 3), dtype=np.uint8)
             frame = draw_in_center(frame=frame, hand_landmarks=hand_landmarks)
+            frame = add_text_to_frame(processed_hands[index], frame)
             frames.append(frame)
             
             if saveMetadata is True:
                 # encoding hand landmarks
                 ecoded_landmarks = encode_hand_landmarks(hand_landmarks)
                 metadata[processed_hands[index]] = ecoded_landmarks
-                index = index + 1
+            index = index + 1
     
-    frame_to_save = None
-    if len(frames) > 1:
-        frame_to_save = np.hstack((frames[0], frames[1]))
-    else:
-        frame_to_save = frames[0]
-
-    return frame_to_save, metadata
+    if len(frames) == 1:
+        emptyFrame = np.zeros(shape=(save_height, save_width, 3), dtype=np.uint8)
+        frames.append(emptyFrame)
+    
+    return np.hstack((frames[0], frames[1])), metadata
 
 def process_landmark_for_full_frame(result, incoming_frame):
     frame_height, frame_width, _ = incoming_frame.shape

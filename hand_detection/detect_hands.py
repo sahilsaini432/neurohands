@@ -5,7 +5,7 @@ import argparse
 import os
 from pprint import pprint as _print
 
-from detect_hands_helper import HandLandmark, process_landmark_for_fixed_frame, process_landmark_for_full_frame, process_landmark_from_image
+from detect_hands_helper import HandLandmark, get_save_frame_size, process_landmark_for_fixed_frame, process_landmark_for_full_frame, process_landmark_from_image
 
 # Initialize the parser
 parser = argparse.ArgumentParser("Config")
@@ -40,7 +40,7 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
             output_filename = "./output_data/hand_visible_video.mp4"
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             fps = 20.0
-            out = cv2.VideoWriter(output_filename, fourcc, fps, (width, height))
+            out = cv2.VideoWriter(output_filename, fourcc, fps, get_save_frame_size())
 
         if not cap.isOpened():
             print("ERROR: could not access the camera.")
