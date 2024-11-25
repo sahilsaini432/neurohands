@@ -1,5 +1,3 @@
-from ast import arg
-import time
 import mediapipe as mp
 import cv2
 import argparse

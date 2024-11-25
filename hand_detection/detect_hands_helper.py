@@ -2,13 +2,9 @@ from ast import arg
 from enum import Enum
 import json
 from math import pi
-import pickle
-import re
 from google.protobuf.json_format import MessageToDict
 import mediapipe as mp
 import cv2
-import argparse
-import os
 import base64
 import numpy as np
 from pathlib import Path
