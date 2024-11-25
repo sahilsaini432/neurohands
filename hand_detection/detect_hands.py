@@ -1,7 +1,9 @@
 from ast import arg
+import time
 import mediapipe as mp
 import cv2
 import argparse
+from datetime import datetime, timedelta
 import os
 from pprint import pprint as _print
 
@@ -13,6 +15,7 @@ parser.add_argument("-l", "--live", required=False, action="store_true", help="L
 parser.add_argument("-p", "--photo", required=False, action="store_true", help="Photo hand detection")
 parser.add_argument("-d", "--dir", required=False, action="store_true", help="Detect photo from directory")
 parser.add_argument("-i", "--input", required=False, type=str, help="Input path for file or directory")
+parser.add_argument("-t", "--time", required=False, type=int, help="timed hand detection")
 parser.add_argument("-c", "--center", required=False, action="store_true", help="Draw the landmark at the center of the frame")
 parser.add_argument("-v", "--video", required=False, action="store_true", help="Video save mode")
 args = parser.parse_args()
@@ -41,12 +44,18 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             fps = 20.0
             out = cv2.VideoWriter(output_filename, fourcc, fps, get_save_frame_size())
-
+        
+        condition = True
+        if args.time is not None:
+            start_time = datetime.now()
+            duration = timedelta(seconds=args.time)
+            condition = datetime.now() < start_time + duration
+        
         if not cap.isOpened():
             print("ERROR: could not access the camera.")
             exit()
 
-        while True:
+        while condition:
             ret, frame = cap.read()
             if not ret:
                 print("ERROR: failed to capture video")
@@ -62,10 +71,13 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
             if result.multi_hand_landmarks and args.video is True:
                 save_frame, _ = process_landmark_for_fixed_frame(result=result, saveMetadata=False)
                 out.write(save_frame)
-
+            
             # Exit the loop when 'q' key is pressed
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+            
+            if args.time is not None:
+                condition = datetime.now() < start_time + duration
         
         cap.release()
         cv2.destroyAllWindows()

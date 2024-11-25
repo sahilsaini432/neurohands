@@ -125,14 +125,14 @@ def process_landmark_for_fixed_frame(result, saveMetadata):
         for handedness in result.multi_handedness:
             processed_hands.append(handedness.classification[0].label)
             
-    frames = []
+    frames = {}
     index = 0
     if result.multi_hand_landmarks:
         for hand_landmarks in result.multi_hand_landmarks:
             frame = np.zeros(shape=(save_height, save_width, 3), dtype=np.uint8)
             frame = draw_in_center(frame=frame, hand_landmarks=hand_landmarks)
             frame = add_text_to_frame(processed_hands[index], frame)
-            frames.append(frame)
+            frames[processed_hands[index]] = frame
             
             if saveMetadata is True:
                 # encoding hand landmarks
@@ -140,11 +140,14 @@ def process_landmark_for_fixed_frame(result, saveMetadata):
                 metadata[processed_hands[index]] = ecoded_landmarks
             index = index + 1
     
-    if len(frames) == 1:
+    if len(frames.values()) == 1:
         emptyFrame = np.zeros(shape=(save_height, save_width, 3), dtype=np.uint8)
-        frames.append(emptyFrame)
+        if frames.keys().__contains__("Left"):
+            frames["Right"] = emptyFrame
+        else:
+            frames["Left"] = emptyFrame
     
-    return np.hstack((frames[0], frames[1])), metadata
+    return np.hstack((frames["Left"], frames["Right"])), metadata
 
 def process_landmark_for_full_frame(result, incoming_frame):
     frame_height, frame_width, _ = incoming_frame.shape
@@ -219,7 +222,7 @@ def draw_in_center(frame, hand_landmarks):
         y = int(landmark.y * target_height + offset_y)
 
         # Draw a circle at each landmark
-        cv2.circle(frame, (x, y), radius=5, color=(0, 255, 0), thickness=-1)
+        cv2.circle(frame, (x, y), radius=5, color=(0, 255, 0), thickness=-2)
         
     # draw the connections between the landmarks
     for connection in mp_hands.HAND_CONNECTIONS:
