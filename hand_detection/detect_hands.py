@@ -1,11 +1,14 @@
+import threading
 import mediapipe as mp
 import cv2
 import argparse
 from datetime import datetime, timedelta
 import os
 from pprint import pprint as _print
+import speech_recognition as sr
+import pyttsx3
 
-from detect_hands_helper import HandLandmark, get_save_frame_size, process_landmark_for_fixed_frame, process_landmark_for_full_frame, process_landmark_from_image
+from detect_hands_helper import HandLandmark, get_save_frame_size, process_landmark_for_fixed_frame, process_landmark_for_full_frame, process_landmark_from_image, speak, start_voiceCommands, stop_program_event
 
 # Initialize the parser
 parser = argparse.ArgumentParser("Config")
@@ -16,6 +19,7 @@ parser.add_argument("-i", "--input", required=False, type=str, help="Input path 
 parser.add_argument("-t", "--time", required=False, type=int, help="timed hand detection")
 parser.add_argument("-c", "--center", required=False, action="store_true", help="Draw the landmark at the center of the frame")
 parser.add_argument("-v", "--video", required=False, action="store_true", help="Video save mode")
+parser.add_argument("-vc", "--voice", required=False, action="store_true", help="Run with voice commands")
 args = parser.parse_args()
 
 mp_drawing = mp.solutions.drawing_utils
@@ -52,6 +56,11 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
         if not cap.isOpened():
             print("ERROR: could not access the camera.")
             exit()
+        
+        if args.voice is True:
+            voice_thread = threading.Thread(target=start_voiceCommands, daemon=True)
+            voice_thread.start()
+            speak("Voice command system activated.")
 
         while condition:
             ret, frame = cap.read()
@@ -79,6 +88,9 @@ with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confi
         
         cap.release()
         cv2.destroyAllWindows()
+        
+        if args.voice is True:
+            voice_thread.join()
 
     elif args.photo is True:
         if args.input is None:
