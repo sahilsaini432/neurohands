@@ -1,6 +1,5 @@
 from enum import Enum
 import json
-from math import pi
 from blinker import Signal
 import mediapipe as mp
 import cv2
@@ -8,12 +7,10 @@ import base64
 import numpy as np
 from pathlib import Path
 from pprint import pprint as _print
-from typing import List, Dict, Any
+from typing import List
 from dataclasses import dataclass, asdict, field
 from PIL import Image, PngImagePlugin
 from PIL.ExifTags import TAGS
-import speech_recognition as sr
-import pyttsx3
 
 stop_program_event = Signal()
 
@@ -21,9 +18,6 @@ mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
 save_width = 550
 save_height = 550
-
-recognizer = sr.Recognizer()
-engine = pyttsx3.init()
 
 class HandLandmark(Enum):
     WRIST = 0
@@ -245,30 +239,3 @@ def draw_in_center(frame, hand_landmarks):
         # Draw the connection
         cv2.line(frame, start_point, end_point, color=(255, 0, 0), thickness=2)
     return frame
-
-def speak(value):
-    engine.say(value)
-    engine.runAndWait()
-
-def process_command(command):
-    if "stop" in command:
-        return False
-    else:
-        return True
-
-def start_voiceCommands():
-    while True:
-        with sr.Microphone() as source:
-            print("Listening for voice commands...")
-            recognizer.adjust_for_ambient_noise(source=source)
-            try:
-                audio = recognizer.listen(source)
-                command = recognizer.recognize_google(audio)
-                print(f"You said: {command}")
-                process_command(command)
-            except sr.UnknownValueError:
-                print("sorry, i didn't catch that")
-                speak("sorry, i didn't catch that.")
-            except sr.RequestError as e:
-                print("error with the service")
-                speak("Error with the speech recognition service.")

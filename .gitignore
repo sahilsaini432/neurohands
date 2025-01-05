@@ -170,3 +170,4 @@ cython_debug/
 .DS_Store
 samples/
 .vscode/launch.json
+chat_suggestions/
