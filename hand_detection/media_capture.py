@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from email.mime import audio
 import cv2
 from pprint import pprint as _print
 import threading
@@ -7,6 +8,8 @@ import queue
 import speech_recognition as sr
 import pyttsx3
 import pyaudio
+
+import sounddevice as sd
 
 from detect_hands_helper import get_save_frame_size, process_landmark_for_fixed_frame, process_landmark_for_full_frame
 
@@ -79,6 +82,8 @@ class VoiceCommandThread:
     def __init__(self, args):
         self.Running = True
         self.Recognizer = sr.Recognizer()
+        self.Recognizer.energy_threshold = 300
+        self.Recognizer.dynamic_energy_threshold = True
         self.SpeakLock = threading.Lock()
         self.Engine = pyttsx3.init()
     
@@ -87,19 +92,15 @@ class VoiceCommandThread:
         self.Thread.start()
     
     def start_loop(self):
-        with sr.Microphone() as source:
-            self.speak("Voice command initialized...")
-            self.Recognizer.adjust_for_ambient_noise(source=source, duration=1)
-            
+        with sr.Microphone(2) as source:
+            self.Recognizer.adjust_for_ambient_noise(source)
+            self.speak("Voice recognizer initialized...")
             while self.Running:
                 try:
-                    _print(f"Listening for voice command...")
-                    self.Audio = self.Recognizer.listen(source)
-                    _print(f"Processing voice command...")  
-                    command = self.Recognizer.recognize_google(self.Audio)
+                    audio = self.Recognizer.listen(source)
+                    command = self.Recognizer.recognize_google(audio)
                     _print(f"Voice Command: {command}")
-                except sr.UnknownValueError:
-                    print("sorry, i didn't catch that")
+                except sr.UnknownValueError as e:
                     continue
                 except sr.RequestError as e:
                     print("error with the service")

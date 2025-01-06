@@ -35,21 +35,26 @@ if __name__ == "__main__":
             # start video capture
             video_thread = VideoCaptureThread(args=args, hands=hands)
             video_thread.start()
+            condition = video_thread.Running
             
             # start voice commands
             if args.voice is True:
                 vc_thread = VoiceCommandThread(args=args)
                 vc_thread.start()
+                condition = video_thread.Running and vc_thread.Running
             
             # While the video thread is running
-            while video_thread.Running:
+            while condition:
                 if not video_thread.FrameQueue.empty():
                     frame = video_thread.FrameQueue.get()
                     cv2.imshow("Hand Detection", frame)
                 
                 # Exit the loop when 'q' key is pressed
-                if cv2.waitKey(1) & 0xFF == ord('q'): video_thread.stop()
-
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    video_thread.stop()
+                    if args.voice is True: vc_thread.stop()
+                    condition = False
+        
         elif args.photo is True:
             if args.input is None:
                 print("ERROR: missing input image path")
