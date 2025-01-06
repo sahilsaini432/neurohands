@@ -1,17 +1,21 @@
 from datetime import datetime, timedelta
 from email.mime import audio
+from tkinter.tix import Tree
 import cv2
 from pprint import pprint as _print
 import threading
 import queue
+import asyncio
 
 import speech_recognition as sr
 import pyttsx3
-import pyaudio
-
-import sounddevice as sd
+from gtts import gTTS
+import playsound
+import os
 
 from detect_hands_helper import get_save_frame_size, process_landmark_for_fixed_frame, process_landmark_for_full_frame
+
+Process_Frame = True
 
 class VideoCaptureThread:
     def __init__(self, args, hands):
@@ -49,6 +53,8 @@ class VideoCaptureThread:
 
     def start_loop(self):
         while self.Running:
+            global Process_Frame
+            
             ret, frame = self.VideoCapture.read()
             
             if not ret:
@@ -60,7 +66,7 @@ class VideoCaptureThread:
             
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             result = self.Hands.process(frame_rgb)
-            frame = process_landmark_for_full_frame(result, frame)
+            frame = process_landmark_for_full_frame(result, frame, Process_Frame)
             
             # Enter frame to display queue
             self.FrameQueue.put(frame)
@@ -80,6 +86,9 @@ class VideoCaptureThread:
 
 class VoiceCommandThread:
     def __init__(self, args):
+        global Process_Frame
+        
+        Process_Frame = False
         self.Running = True
         self.Recognizer = sr.Recognizer()
         self.Recognizer.energy_threshold = 300
@@ -99,7 +108,7 @@ class VoiceCommandThread:
                 try:
                     audio = self.Recognizer.listen(source)
                     command = self.Recognizer.recognize_google(audio)
-                    _print(f"Voice Command: {command}")
+                    self.process_commands(command)
                 except sr.UnknownValueError as e:
                     continue
                 except sr.RequestError as e:
@@ -117,6 +126,23 @@ class VoiceCommandThread:
         print("Voice command stopped.")
     
     def speak(self, value):
-        with self.SpeakLock:
-            self.Engine.say(value)
-            self.Engine.runAndWait()
+        tts = gTTS(text=value, lang="en", slow=False)
+        tts.save("temp.mp3")
+        playsound.playsound("temp.mp3")
+        os.remove("temp.mp3")
+
+    def process_commands(self, commandReceived):
+        global Process_Frame
+        
+        command = f"{commandReceived.lower()}"
+        command = command.replace(" ", "_")
+        _print(f"command: {command}")
+        
+        if command.__contains__("start"):
+            self.speak("Processing frames now..")
+            Process_Frame = True
+        elif command.__contains__("stop"):
+            self.speak("Stopping processing frames..")
+            Process_Frame = False
+        elif command.__contains__("exit") or command.__contains__("quit"):
+            exit(0)

@@ -145,11 +145,11 @@ def process_landmark_for_fixed_frame(result, saveMetadata):
     
     return np.hstack((frames["Left"], frames["Right"])), metadata
 
-def process_landmark_for_full_frame(result, incoming_frame):
+def process_landmark_for_full_frame(result, incoming_frame, process_frame=True):
     frame_height, frame_width, _ = incoming_frame.shape
     full_frame = np.zeros(shape=(frame_height, frame_width, 3), dtype=np.uint8)
     
-    if result.multi_hand_landmarks:
+    if result.multi_hand_landmarks and process_frame is True:
         for hand_landmarks in result.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(full_frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
                     mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
