@@ -1,3 +1,4 @@
+import threading
 import mediapipe as mp
 import cv2
 import argparse
@@ -6,18 +7,7 @@ from pprint import pprint as _print
 
 from detect_hands_helper import  process_landmark_from_image
 from media_capture import VideoCaptureThread, VoiceCommandThread
-
-# Initialize the parser
-parser = argparse.ArgumentParser("Config")
-parser.add_argument("-l", "--live", required=False, action="store_true", help="Live hand detection")
-parser.add_argument("-p", "--photo", required=False, action="store_true", help="Photo hand detection")
-parser.add_argument("-d", "--dir", required=False, action="store_true", help="Detect photo from directory")
-parser.add_argument("-i", "--input", required=False, type=str, help="Input path for file or directory")
-parser.add_argument("-t", "--time", required=False, type=int, help="timed hand detection")
-parser.add_argument("-c", "--center", required=False, action="store_true", help="Draw the landmark at the center of the frame")
-parser.add_argument("-v", "--video", required=False, type=str, help="Video save mode")
-parser.add_argument("-vc", "--voice", required=False, action="store_true", help="Run with voice commands")
-args = parser.parse_args()
+from event_manager import event_manager
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
@@ -26,12 +16,38 @@ mp_hands = mp.solutions.hands
 x, y = 100, 100  # Top-left corner of the square
 width, height = 200, 200  # Width and height of the square (same value for a square
 
-# wrist = hand_landmarks.landmark[mp_hands.HandLandmark.WRIST]
-# thumb = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
+condition = True
+vc_thread = None
+video_thread = None
 
-if __name__ == "__main__":
+def parse_args():
+    # Initialize the parser
+    parser = argparse.ArgumentParser("Config")
+    parser.add_argument("-l", "--live", required=False, action="store_true", help="Live hand detection")
+    parser.add_argument("-p", "--photo", required=False, action="store_true", help="Photo hand detection")
+    parser.add_argument("-d", "--dir", required=False, action="store_true", help="Detect photo from directory")
+    parser.add_argument("-i", "--input", required=False, type=str, help="Input path for file or directory")
+    parser.add_argument("-t", "--time", required=False, type=int, help="timed hand detection")
+    parser.add_argument("-c", "--center", required=False, action="store_true", help="Draw the landmark at the center of the frame")
+    parser.add_argument("-v", "--video", required=False, type=str, help="Video save mode")
+    parser.add_argument("-vc", "--voice", required=False, action="store_true", help="Run with voice commands")
+    return parser.parse_args()
+
+def on_stop_event():
+    global vc_thread, video_thread, condition
+    vc_thread.stop()
+    video_thread.stop()
+    condition = False
+
+def main():
+    global vc_thread, video_thread, condition
+    args = parse_args()
+    
     with mp_hands.Hands(static_image_mode=False, max_num_hands=2,min_detection_confidence=0.5) as hands:
         if args.live is True:
+            # register events
+            event_manager.add_listener("stop", on_stop_event)
+            
             # start video capture
             video_thread = VideoCaptureThread(args=args, hands=hands)
             video_thread.start()
@@ -70,3 +86,8 @@ if __name__ == "__main__":
             for filename in os.listdir(args.input):
                 filepath = os.path.join(args.input, filename)
                 process_landmark_from_image(hands, filepath, args)
+
+if __name__ == "__main__":
+    main()
+    cv2.destroyAllWindows()
+    print("Program ended successfully")

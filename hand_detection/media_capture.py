@@ -14,6 +14,7 @@ import playsound
 import os
 
 from detect_hands_helper import get_save_frame_size, process_landmark_for_fixed_frame, process_landmark_for_full_frame
+from event_manager import event_manager
 
 Process_Frame = True
 
@@ -25,7 +26,7 @@ class VideoCaptureThread:
         self.Height = int(self.VideoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.Hands = hands
         self.Running = True
-        self.FrameQueue = queue.Queue()
+        self.FrameQueue = queue.Queue(maxsize=3)
         self.TimedLoop = False
         self.VideoOutputWriter = None
         
@@ -50,8 +51,19 @@ class VideoCaptureThread:
 
         self.Thread = threading.Thread(target=self.start_loop, daemon=False)
         self.Thread.start()
+    
+    def start_frame_processing(self):
+        global Process_Frame
+        Process_Frame = True
+    
+    def stop_frame_processing(self):
+        global Process_Frame
+        Process_Frame = False
 
     def start_loop(self):
+        event_manager.add_listener("start_frame_processing", self.start_frame_processing)
+        event_manager.add_listener("stop_frame_processing", self.stop_frame_processing)
+        
         while self.Running:
             global Process_Frame
             
@@ -138,11 +150,12 @@ class VoiceCommandThread:
         command = command.replace(" ", "_")
         _print(f"command: {command}")
         
-        if command.__contains__("start"):
+        if command.__contains__("start_processing"):
             self.speak("Processing frames now..")
-            Process_Frame = True
-        elif command.__contains__("stop"):
-            self.speak("Stopping processing frames..")
-            Process_Frame = False
-        elif command.__contains__("exit") or command.__contains__("quit"):
-            exit(0)
+            event_manager.trigger_event("start_frame_processing")
+        elif command.__contains__("stop_processing"):
+            self.speak("Stopping frame processing..")
+            event_manager.trigger_event("stop_frame_processing")
+        elif command.__contains__("exit_program") or command.__contains__("quit_program"):
+            self.speak("stoping program execution...")
+            event_manager.trigger_event("stop")
