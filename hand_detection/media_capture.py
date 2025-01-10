@@ -13,10 +13,8 @@ from gtts import gTTS
 import playsound
 import os
 
-from detect_hands_helper import get_save_frame_size, process_landmark_for_fixed_frame, process_landmark_for_full_frame
+from detect_hands_helper import get_save_frame_size, draw_gesture_for_fixed_frame, draw_gesture
 from event_manager import event_manager
-
-Process_Frame = True
 
 class VideoCaptureThread:
     def __init__(self, args, hands):
@@ -28,7 +26,12 @@ class VideoCaptureThread:
         self.Running = True
         self.FrameQueue = queue.Queue(maxsize=3)
         self.TimedLoop = False
-        self.VideoOutputWriter = None
+        self.ProcessFrame = True
+        
+        # Video Setup
+        self.VideoCounter = 0
+        self.VideoWriter = None
+        self.SaveVideo = False
         
         # Timed Loop Setup
         if args.time is not None:
@@ -36,13 +39,6 @@ class VideoCaptureThread:
             self.StartTime = datetime.now()
             self.Duration = timedelta(seconds=args.time)
             self.Running = datetime.now() < self.StartTime + self.Duration
-        
-        # Video Writer Setup
-        if args.video is not None:
-            _print(f"args.video: {args.video}")
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            fps = 20.0
-            self.VideoOutputWriter = cv2.VideoWriter(args.video, fourcc, fps, get_save_frame_size())
 
     def start(self):
         if not self.VideoCapture.isOpened():
@@ -53,20 +49,36 @@ class VideoCaptureThread:
         self.Thread.start()
     
     def start_frame_processing(self):
-        global Process_Frame
-        Process_Frame = True
+        self.ProcessFrame = True
     
     def stop_frame_processing(self):
-        global Process_Frame
-        Process_Frame = False
+        self.ProcessFrame = False
+        self.FrameQueue = queue.Queue(maxsize=3)
+        cv2.destroyAllWindows()
+    
+    def start_recording(self):
+        self.VideoCounter += 1
+        video_name = f"./output_data/recording_{self.VideoCounter}.mp4"
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        self.VideoWriter = cv2.VideoWriter(filename=video_name, fourcc=fourcc, fps=20.0, frameSize=get_save_frame_size())
+        self.ProcessFrame = True
+        self.SaveVideo = True
+    
+    def stop_recording(self):
+        if self.VideoWriter is None: return
+        self.SaveVideo = False
+        self.ProcessFrame = False
+        self.VideoWriter.release()
+        self.VideoWriter = None
+        cv2.destroyAllWindows()
 
     def start_loop(self):
         event_manager.add_listener("start_frame_processing", self.start_frame_processing)
         event_manager.add_listener("stop_frame_processing", self.stop_frame_processing)
+        event_manager.add_listener("start_recording", self.start_recording)
+        event_manager.add_listener("stop_recording", self.stop_recording)
         
-        while self.Running:
-            global Process_Frame
-            
+        while self.Running and self.ProcessFrame:
             ret, frame = self.VideoCapture.read()
             
             if not ret:
@@ -78,14 +90,14 @@ class VideoCaptureThread:
             
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             result = self.Hands.process(frame_rgb)
-            frame = process_landmark_for_full_frame(result, frame, Process_Frame)
+            frame = draw_gesture(result, frame)
             
             # Enter frame to display queue
-            self.FrameQueue.put(frame)
+            if self.ProcessFrame: self.FrameQueue.put(frame)
             
-            if result.multi_hand_landmarks and self.VideoOutputWriter is not None:
-                save_frame, _ = process_landmark_for_fixed_frame(result=result, saveMetadata=False)
-                self.VideoOutputWriter.write(save_frame)
+            if result.multi_hand_landmarks and self.SaveVideo:
+                save_frame, _ = draw_gesture_for_fixed_frame(result=result)
+                self.VideoWriter.write(save_frame)
             
             if self.TimedLoop:
                 self.Running = datetime.now() < self.StartTime + self.Duration
@@ -98,9 +110,8 @@ class VideoCaptureThread:
 
 class VoiceCommandThread:
     def __init__(self, args):
-        global Process_Frame
-        
-        Process_Frame = False
+        self.RecordVideo = args.saveVideo
+        event_manager.trigger_event("stop_frame_processing")
         self.Running = True
         self.Recognizer = sr.Recognizer()
         self.Recognizer.energy_threshold = 300
@@ -144,8 +155,6 @@ class VoiceCommandThread:
         os.remove("temp.mp3")
 
     def process_commands(self, commandReceived):
-        global Process_Frame
-        
         command = f"{commandReceived.lower()}"
         command = command.replace(" ", "_")
         _print(f"command: {command}")
@@ -153,6 +162,18 @@ class VoiceCommandThread:
         if command.__contains__("start_processing"):
             self.speak("Processing frames now..")
             event_manager.trigger_event("start_frame_processing")
+        elif command.__contains__("start_recording"):
+            if self.RecordVideo:
+                self.speak("Starting recording in 3, 2, 1...")
+                event_manager.trigger_event("start_recording")
+            else:
+                self.speak("recording is not enabled")
+        elif self.RecordVideo and command.__contains__("stop_recording"):
+            if self.RecordVideo:
+                self.speak("stoping recording now")
+                event_manager.trigger_event("stop_recording")
+            else:
+                self.speak("recording is not enabled")
         elif command.__contains__("stop_processing"):
             self.speak("Stopping frame processing..")
             event_manager.trigger_event("stop_frame_processing")

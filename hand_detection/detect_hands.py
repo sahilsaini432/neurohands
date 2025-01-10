@@ -5,7 +5,7 @@ import argparse
 import os
 from pprint import pprint as _print
 
-from detect_hands_helper import  process_landmark_from_image
+from detect_hands_helper import  process_frame_from_filepath
 from media_capture import VideoCaptureThread, VoiceCommandThread
 from event_manager import event_manager
 
@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument("-i", "--input", required=False, type=str, help="Input path for file or directory")
     parser.add_argument("-t", "--time", required=False, type=int, help="timed hand detection")
     parser.add_argument("-c", "--center", required=False, action="store_true", help="Draw the landmark at the center of the frame")
-    parser.add_argument("-v", "--video", required=False, type=str, help="Video save mode")
+    parser.add_argument("-sv", "--saveVideo", required=False, action="store_true", help="Save video")
     parser.add_argument("-vc", "--voice", required=False, action="store_true", help="Run with voice commands")
     return parser.parse_args()
 
@@ -76,7 +76,7 @@ def main():
                 print("ERROR: missing input image path")
                 exit(0)
             
-            process_landmark_from_image(hands,args.input, args)
+            process_frame_from_filepath(hands,args.input)
 
         elif args.dir is True:
             if args.input is None:
@@ -85,7 +85,7 @@ def main():
             
             for filename in os.listdir(args.input):
                 filepath = os.path.join(args.input, filename)
-                process_landmark_from_image(hands, filepath, args)
+                process_frame_from_filepath(hands, filepath)
 
 if __name__ == "__main__":
     main()
