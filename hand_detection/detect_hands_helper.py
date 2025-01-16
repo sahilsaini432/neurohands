@@ -211,7 +211,6 @@ def draw_in_center(frame, hand_landmarks):
         )
 
         # Draw the connection
-        # cv2.line(frame, start_point, end_point, color=(4, 210, 15), thickness=2)
         cv2.line(frame, start_point, end_point, color=(0, 255, 0), thickness=2)
     
     # Draw landmarks centered in the target frame

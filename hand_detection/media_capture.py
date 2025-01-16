@@ -29,7 +29,6 @@ class VideoCaptureThread:
         self.ProcessFrame = True
         
         # Video Setup
-        self.VideoCounter = 0
         self.VideoWriter = None
         self.SaveVideo = False
         
@@ -56,9 +55,8 @@ class VideoCaptureThread:
         self.FrameQueue = queue.Queue(maxsize=3)
         cv2.destroyAllWindows()
     
-    def start_recording(self):
-        self.VideoCounter += 1
-        video_name = f"./output_data/recording_{self.VideoCounter}.mp4"
+    def start_recording(self, data):
+        video_name = f"./output_data/{data["fileName"]}.mp4"
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         self.VideoWriter = cv2.VideoWriter(filename=video_name, fourcc=fourcc, fps=20.0, frameSize=get_save_frame_size())
         self.ProcessFrame = True
@@ -78,7 +76,7 @@ class VideoCaptureThread:
         event_manager.add_listener("start_recording", self.start_recording)
         event_manager.add_listener("stop_recording", self.stop_recording)
         
-        while self.Running and self.ProcessFrame:
+        while self.Running:
             ret, frame = self.VideoCapture.read()
             
             if not ret:
@@ -164,8 +162,10 @@ class VoiceCommandThread:
             event_manager.trigger_event("start_frame_processing")
         elif command.__contains__("start_recording"):
             if self.RecordVideo:
+                self.speak("Enter video name...")
+                fileName = input("Enter filename for video: ")
                 self.speak("Starting recording in 3, 2, 1...")
-                event_manager.trigger_event("start_recording")
+                event_manager.trigger_event("start_recording", {"fileName": fileName})
             else:
                 self.speak("recording is not enabled")
         elif self.RecordVideo and command.__contains__("stop_recording"):
