@@ -11,6 +11,7 @@ from typing import List
 from dataclasses import dataclass, asdict, field
 from PIL import Image, PngImagePlugin
 from PIL.ExifTags import TAGS
+from datetime import datetime
 
 stop_program_event = Signal()
 
@@ -169,7 +170,9 @@ def process_frame_from_filepath(hands, filepath):
     filename.remove("jpg")
     filename = ".".join(filename)
     filename = f"./output_data/{filename}-output.png"
-    
+    save_photo_with_metadata(frame_to_save, metadata, filename)
+
+def save_photo_with_metadata(frame_to_save, metadata, filename):
     pil_image = Image.fromarray(frame_to_save)
     meta = PngImagePlugin.PngInfo()
     for key, value in metadata.items():
@@ -222,3 +225,10 @@ def draw_in_center(frame, hand_landmarks):
         # Draw a circle at each landmark
         cv2.circle(frame, (x, y), radius=4, color=(255, 0, 0), thickness=-2)
     return frame
+
+def save_photo(data):
+    photo_name = datetime.now().isoformat() + "Z"
+    result = data["result"]
+    frame, metadata = draw_gesture_for_fixed_frame(result)
+    filename = f"./output_data/{photo_name}.png"
+    save_photo_with_metadata(frame, metadata, filename)

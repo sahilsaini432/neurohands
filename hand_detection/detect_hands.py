@@ -1,3 +1,4 @@
+from math import fabs
 import threading
 import mediapipe as mp
 import cv2
@@ -5,7 +6,7 @@ import argparse
 import os
 from pprint import pprint as _print
 
-from detect_hands_helper import  process_frame_from_filepath
+from detect_hands_helper import  process_frame_from_filepath, save_photo
 from media_capture import VideoCaptureThread, VoiceCommandThread
 from event_manager import event_manager
 
@@ -19,6 +20,7 @@ width, height = 200, 200  # Width and height of the square (same value for a squ
 condition = True
 vc_thread = None
 video_thread = None
+save_photo_thread = None
 
 def parse_args():
     # Initialize the parser
@@ -58,12 +60,17 @@ def main():
                 vc_thread = VoiceCommandThread(args=args)
                 vc_thread.start()
                 condition = video_thread.Running and vc_thread.Running
+                event_manager.add_listener("save_take_photo", save_photo)
             
             # While the video thread is running
             while condition:
                 if not video_thread.FrameQueue.empty():
                     frame = video_thread.FrameQueue.get()
                     cv2.imshow("Hand Detection", frame)
+                
+                if not video_thread.PhotoQueue.empty():
+                    result = video_thread.PhotoQueue.get()
+                    event_manager.trigger_event("save_take_photo", {"result": result})
                 
                 # Exit the loop when 'q' key is pressed
                 if cv2.waitKey(1) & 0xFF == ord('q'):

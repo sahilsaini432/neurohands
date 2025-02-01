@@ -28,6 +28,10 @@ class VideoCaptureThread:
         self.TimedLoop = False
         self.ProcessFrame = True
         
+        # Photo Setup
+        self.TakePhoto = False
+        self.PhotoQueue = queue.Queue(maxsize=1)
+        
         # Video Setup
         self.VideoWriter = None
         self.SaveVideo = False
@@ -69,12 +73,17 @@ class VideoCaptureThread:
         self.VideoWriter.release()
         self.VideoWriter = None
         cv2.destroyAllWindows()
+    
+    def on_take_photo(self):
+        self.ProcessFrame = True
+        self.TakePhoto = True
 
     def start_loop(self):
         event_manager.add_listener("start_frame_processing", self.start_frame_processing)
         event_manager.add_listener("stop_frame_processing", self.stop_frame_processing)
         event_manager.add_listener("start_recording", self.start_recording)
         event_manager.add_listener("stop_recording", self.stop_recording)
+        event_manager.add_listener("take_photo", self.on_take_photo)
         
         while self.Running:
             ret, frame = self.VideoCapture.read()
@@ -92,6 +101,10 @@ class VideoCaptureThread:
             
             # Enter frame to display queue
             if self.ProcessFrame: self.FrameQueue.put(frame)
+            
+            if self.TakePhoto is True:
+                self.PhotoQueue.put(result)
+                self.TakePhoto = False
             
             if result.multi_hand_landmarks and self.SaveVideo:
                 save_frame, _ = draw_gesture_for_fixed_frame(result=result)
@@ -116,6 +129,7 @@ class VoiceCommandThread:
         self.Recognizer.dynamic_energy_threshold = True
         self.SpeakLock = threading.Lock()
         self.Engine = pyttsx3.init()
+        event_manager.add_listener("speak", self.on_speak)
     
     def start(self):
         self.Thread = threading.Thread(target=self.start_loop, daemon=True)
@@ -145,6 +159,9 @@ class VoiceCommandThread:
     def stop(self):
         self.Running = False
         print("Voice command stopped.")
+    
+    def on_speak(self, data):
+        self.speak(data["text"])
     
     def speak(self, value):
         tts = gTTS(text=value, lang="en", slow=False)
@@ -180,3 +197,6 @@ class VoiceCommandThread:
         elif command.__contains__("exit_program") or command.__contains__("quit_program"):
             self.speak("stoping program execution...")
             event_manager.trigger_event("stop")
+        elif command.__contains__("take_photo") or command.__contains__("save_photo"):
+            self.speak("Taking photo now..")
+            event_manager.trigger_event("take_photo")
