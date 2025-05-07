@@ -171,3 +171,4 @@ cython_debug/
 samples/
 .vscode/launch.json
 chat_suggestions/
+todo.txt
