@@ -114,9 +114,15 @@ def add_text_to_frame(text, frame):
     # Put the text on the frame
     return cv2.putText(frame, text, (x, y), font, font_scale, font_color, font_thickness)
 
-def draw_gesture_for_fixed_frame(result):
+def draw_gesture_for_fixed_frame(result, frame=None):
     processed_hands = []
     metadata = {}
+    
+    # Get frame dimensions - use frame if provided, otherwise use default values
+    if frame is not None:
+        frame_height, frame_width = frame.shape[:2]
+    else:
+        frame_height, frame_width = save_height, save_width
     
     if result.multi_handedness:
         for handedness in result.multi_handedness:
@@ -126,22 +132,22 @@ def draw_gesture_for_fixed_frame(result):
     index = 0
     if result.multi_hand_landmarks:
         for hand_landmarks in result.multi_hand_landmarks:
-            frame = np.zeros(shape=(save_height, save_width, 3), dtype=np.uint8)
-            frame = draw_in_center(frame=frame, hand_landmarks=hand_landmarks)
-            frame = add_text_to_frame(processed_hands[index], frame)
-            frames[processed_hands[index]] = frame
+            hand_frame = np.zeros(shape=(frame_height, frame_width, 3), dtype=np.uint8)
+            hand_frame = draw_in_center(frame=hand_frame, hand_landmarks=hand_landmarks)
+            hand_frame = add_text_to_frame(processed_hands[index], hand_frame)
+            frames[processed_hands[index]] = hand_frame
             
             # encoding hand landmarks
             ecoded_landmarks = encode_hand_landmarks(hand_landmarks)
             metadata[processed_hands[index]] = ecoded_landmarks
             index = index + 1
     
-    if len(frames.values()) == 1:
-        emptyFrame = np.zeros(shape=(save_height, save_width, 3), dtype=np.uint8)
-        if frames.keys().__contains__("Left"):
-            frames["Right"] = emptyFrame
-        else:
-            frames["Left"] = emptyFrame
+    # Ensure we always have Left and Right frames
+    emptyFrame = np.zeros(shape=(frame_height, frame_width, 3), dtype=np.uint8)
+    if "Left" not in frames:
+        frames["Left"] = emptyFrame
+    if "Right" not in frames:
+        frames["Right"] = emptyFrame
     
     return np.hstack((frames["Left"], frames["Right"])), metadata
 
@@ -163,7 +169,7 @@ def process_frame_from_filepath(hands, filepath):
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     result = hands.process(frame_rgb)
     
-    frame_to_save, metadata = draw_gesture_for_fixed_frame(result)
+    frame_to_save, metadata = draw_gesture_for_fixed_frame(result, frame)
 
     # save the update frame
     filename = Path(filepath).name.split(".")
