@@ -1,16 +1,16 @@
 from datetime import datetime, timedelta
-from email.mime import audio
-from tkinter.tix import Tree
+# from email.mime import audio
+# from tkinter.tix import Tree  # Not used and causes import error
 import cv2
 from pprint import pprint as _print
 import threading
 import queue
-import asyncio
+# import asyncio
 
-import speech_recognition as sr
-import pyttsx3
-from gtts import gTTS
-import playsound
+# import speech_recognition as sr
+# import pyttsx3
+# from gtts import gTTS
+# import playsound
 import os
 
 from detect_hands_helper import get_save_frame_size, draw_gesture_for_fixed_frame, draw_gesture
@@ -94,6 +94,7 @@ class VideoCaptureThread:
                 break
             
             frame = cv2.flip(frame, 1)
+            original_frame = frame.copy()  # Keep original frame for draw_gesture_for_fixed_frame
             
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             result = self.Hands.process(frame_rgb)
@@ -107,7 +108,7 @@ class VideoCaptureThread:
                 self.TakePhoto = False
             
             if result.multi_hand_landmarks and self.SaveVideo:
-                save_frame, _ = draw_gesture_for_fixed_frame(result=result)
+                save_frame, _ = draw_gesture_for_fixed_frame(result, original_frame)
                 self.VideoWriter.write(save_frame)
             
             if self.TimedLoop:
