@@ -2,7 +2,7 @@ import sys
 import subprocess
 import platform
 
-libraries = ["mediapipe","matplotlib", "portaudio", "pyaudio", "numpy", "pandas","SpeechRecognition", "pyttsx3", "blinker", "gtts", "openai", "playsound"]
+libraries = ["mediapipe","matplotlib", "portaudio", "pyaudio", "numpy", "pandas","SpeechRecognition", "pyttsx3", "blinker", "gtts", "openai", "playsound", "keyboard"]
 
 print("Installing required libraries...")
 print()
