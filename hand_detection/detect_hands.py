@@ -26,9 +26,11 @@ save_photo_thread = None
 def parse_args():
     # Initialize the parser
     parser = argparse.ArgumentParser("Config")
-    parser.add_argument(
-        "-l", "--live", required=False, action="store_true", help="Live hand detection"
-    )
+
+    # For live hand detection
+    parser.add_argument("-l", "--live", required=False, action="store_true", help="Live hand detection")
+
+    # For photo hand detection
     parser.add_argument(
         "-p",
         "--photo",
@@ -36,6 +38,8 @@ def parse_args():
         action="store_true",
         help="Photo hand detection",
     )
+
+    # For directory hand detection
     parser.add_argument(
         "-d",
         "--dir",
@@ -43,6 +47,8 @@ def parse_args():
         action="store_true",
         help="Detect photo from directory",
     )
+
+    # For input file or directory
     parser.add_argument(
         "-i",
         "--input",
@@ -50,9 +56,11 @@ def parse_args():
         type=str,
         help="Input path for file or directory",
     )
-    parser.add_argument(
-        "-t", "--time", required=False, type=int, help="timed hand detection"
-    )
+
+    # For timed hand detection
+    parser.add_argument("-t", "--time", required=False, type=int, help="timed hand detection")
+
+    # For center landmark drawing
     parser.add_argument(
         "-c",
         "--center",
@@ -60,9 +68,11 @@ def parse_args():
         action="store_true",
         help="Draw the landmark at the center of the frame",
     )
-    parser.add_argument(
-        "-sv", "--saveVideo", required=False, action="store_true", help="Save video"
-    )
+
+    # For recording video
+    parser.add_argument("-sv", "--saveVideo", required=False, action="store_true", help="Save video")
+
+    # For voice commands
     parser.add_argument(
         "-vc",
         "--voice",
@@ -84,9 +94,7 @@ def main():
     global vc_thread, video_thread, condition
     args = parse_args()
 
-    with mp_hands.Hands(
-        static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5
-    ) as hands:
+    with mp_hands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5) as hands:
         if args.live is True:
             # register events
             event_manager.add_listener("stop", on_stop_event)
@@ -95,10 +103,6 @@ def main():
             video_thread = VideoCaptureThread(args=args, hands=hands)
             video_thread.start()
             condition = video_thread.Running
-
-            # start recording if enabled
-            # if args.saveVideo is True:
-            # video_thread.start_recording()
 
             # start voice commands
             if args.voice is True:

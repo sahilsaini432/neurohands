@@ -18,6 +18,7 @@ from detect_hands_helper import (
     get_save_frame_size,
     draw_gesture_for_fixed_frame,
     draw_gesture,
+    play_sound,
 )
 from event_manager import event_manager
 
@@ -46,6 +47,9 @@ class VideoCaptureThread:
         if self.RecordVideo:
             keyboard.add_hotkey("r", self.start_recording)
             keyboard.add_hotkey("s", self.stop_recording)
+
+        # commands to take photo
+        keyboard.add_hotkey("p", self.on_take_photo)
 
         # Timed Loop Setup
         if args.time is not None:
@@ -96,13 +100,12 @@ class VideoCaptureThread:
         cv2.destroyAllWindows()
 
     def on_take_photo(self):
+        play_sound()
         self.ProcessFrame = True
         self.TakePhoto = True
 
     def start_loop(self):
-        event_manager.add_listener(
-            "start_frame_processing", self.start_frame_processing
-        )
+        event_manager.add_listener("start_frame_processing", self.start_frame_processing)
         event_manager.add_listener("stop_frame_processing", self.stop_frame_processing)
         event_manager.add_listener("start_recording", self.start_recording)
         event_manager.add_listener("stop_recording", self.stop_recording)
@@ -190,39 +193,48 @@ class VoiceCommandThread:
         self.speak(data["text"])
 
     def speak(self, value):
+        fileName = f"speech-{int(datetime.now().timestamp())}.mp3"
         tts = gTTS(text=value, lang="en", slow=False)
-        tts.save("temp.mp3")
-        playsound.playsound("temp.mp3")
-        os.remove("temp.mp3")
+        tts.save(fileName)
+        playsound.playsound(fileName)
+        os.remove(fileName)
 
     def process_commands(self, commandReceived):
         command = f"{commandReceived.lower()}"
         command = command.replace(" ", "_")
         _print(f"command: {command}")
 
+        # Start frame processing
         if command.__contains__("start_processing"):
             self.speak("Processing frames now..")
             event_manager.trigger_event("start_frame_processing")
+
+        # Start recording
         elif command.__contains__("start_recording"):
             if self.RecordVideo:
                 self.speak("Starting recording in 3, 2, 1...")
                 event_manager.trigger_event("start_recording", {"fileName": None})
             else:
                 self.speak("recording is not enabled")
+
+        # Stop recording
         elif self.RecordVideo and command.__contains__("stop_recording"):
             if self.RecordVideo:
                 self.speak("stopping recording now")
                 event_manager.trigger_event("stop_recording")
             else:
                 self.speak("recording is not enabled")
+
+        # Stop frame processing
         elif command.__contains__("stop_processing"):
             self.speak("Stopping frame processing..")
             event_manager.trigger_event("stop_frame_processing")
-        elif command.__contains__("exit_program") or command.__contains__(
-            "quit_program"
-        ):
+
+        # Exit the program
+        elif command.__contains__("exit_program") or command.__contains__("quit_program"):
             self.speak("stopping program execution...")
             event_manager.trigger_event("stop")
+
+        # For taking photos
         elif command.__contains__("take_photo") or command.__contains__("save_photo"):
-            self.speak("Taking photo now..")
             event_manager.trigger_event("take_photo")
