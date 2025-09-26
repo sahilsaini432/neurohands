@@ -6,7 +6,7 @@ import argparse
 import os
 from pprint import pprint as _print
 
-from detect_hands_helper import process_frame_from_filepath, save_photo
+from detect_hands_helper import process_frame_from_filepath, save_photo, set_current_frame
 from media_capture import VideoCaptureThread, VoiceCommandThread
 from event_manager import event_manager
 
@@ -125,6 +125,7 @@ def main():
             while condition:
                 if not video_thread.FrameQueue.empty():
                     frame = video_thread.FrameQueue.get()
+                    set_current_frame(frame)
                     cv2.imshow("Hand Detection", frame)
 
                 if not video_thread.PhotoQueue.empty():

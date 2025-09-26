@@ -18,6 +18,7 @@ stop_program_event = Signal()
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
+current_frame = None
 save_width = 550
 save_height = 550
 
@@ -125,6 +126,11 @@ def add_text_to_frame(text, frame):
 
     # Put the text on the frame
     return cv2.putText(frame, text, (x, y), font, font_scale, font_color, font_thickness)
+
+
+def set_current_frame(frame):
+    global current_frame
+    current_frame = frame
 
 
 def draw_gesture_for_fixed_frame(result, frame=None):
@@ -255,10 +261,10 @@ def draw_in_center(frame, hand_landmarks):
 
 
 def save_photo(data):
-    global totalPhotosTaken
+    global totalPhotosTaken, current_frame
     photo_name = datetime.now().isoformat() + "Z"
     result = data["result"]
-    frame, metadata = draw_gesture_for_fixed_frame(result)
+    frame, metadata = draw_gesture_for_fixed_frame(result, current_frame)
 
     path = Path(__file__).parent.parent
     if not path.joinpath("output_data").exists():
