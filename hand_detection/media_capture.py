@@ -28,6 +28,7 @@ class VideoCaptureThread:
     def __init__(self, args, hands):
         # Video Capture setup
         self.VideoCapture = cv2.VideoCapture(0)
+        self.RecordVideo = args.saveVideo
         self.Width = int(self.VideoCapture.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.Height = int(self.VideoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.Hands = hands
@@ -43,14 +44,6 @@ class VideoCaptureThread:
         # Video Setup
         self.VideoWriter = None
         self.SaveVideo = False
-
-        # if save recording is enabled, setup keyboard shortcuts to start and stop recording
-        if self.RecordVideo:
-            keyboard.add_hotkey("r", self.start_recording)
-            keyboard.add_hotkey("s", self.stop_recording)
-
-        # commands to take photo
-        keyboard.add_hotkey("p", self.on_take_photo)
 
         # Timed Loop Setup
         if args.time is not None:

@@ -121,12 +121,27 @@ def main():
                     result = video_thread.PhotoQueue.get()
                     event_manager.trigger_event("save_take_photo", {"result": result})
 
-                # Exit the loop when 'q' key is pressed
-                if cv2.waitKey(1) & 0xFF == ord("q"):
+                # Check for key presses
+                if cv2.waitKey(1) and 0xFF == ord("q"):
+                    # Exit Program
                     video_thread.stop()
                     if args.voice is True:
                         vc_thread.stop()
                     condition = False
+
+                if args.saveVideo:
+
+                    # Start Recording
+                    if cv2.waitKey(1) and 0xFF == ord("r"):
+                        video_thread.start_recording()
+
+                    # Stop Recording
+                    if cv2.waitKey(1) and 0xFF == ord("s"):
+                        video_thread.stop_recording()
+
+                # Take Photo
+                if cv2.waitKey(1) and 0xFF == ord("p"):
+                    video_thread.on_take_photo()
 
         elif args.photo is True:
             if args.input is None:
