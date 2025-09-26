@@ -255,10 +255,15 @@ def draw_in_center(frame, hand_landmarks):
 
 
 def save_photo(data):
+    global totalPhotosTaken
     photo_name = datetime.now().isoformat() + "Z"
     result = data["result"]
     frame, metadata = draw_gesture_for_fixed_frame(result)
-    filename = f"./output_data/{photo_name}.png"
+
+    path = Path(__file__).parent.parent
+    if not path.joinpath("output_data").exists():
+        path.joinpath("output_data").mkdir(parents=True, exist_ok=True)
+    filename = f"{path}/output_data/{photo_name}.png"
     save_photo_with_metadata(frame, metadata, filename)
     totalPhotosTaken += 1
     print(f"Photo saved: {filename} | Total Photos Taken: {totalPhotosTaken}")

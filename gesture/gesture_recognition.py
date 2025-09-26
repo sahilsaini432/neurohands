@@ -37,22 +37,23 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 model_asset_path = "./gesture_recognizer.task"
 
 options = GestureRecognizerOptions(
-base_options=BaseOptions(model_asset_path),
-running_mode=VisionRunningMode.LIVE_STREAM,
-result_callback=process_result)
+    base_options=BaseOptions(model_asset_path),
+    running_mode=VisionRunningMode.LIVE_STREAM,
+    result_callback=process_result,
+)
 recognizer = GestureRecognizer.create_from_options(options)
 
 # capture frames in a loop
 while True:
-    ret,frame = cap.read()
+    ret, frame = cap.read()
     if not ret:
         print("failed to capture video")
         break
 
     # Exit the loop when 'q' key is pressed
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    if cv2.waitKey(1) & 0xFF == ord("q"):
         break
-    
+
     mp_image = mp.Image(mp.ImageFormat.SRGB, frame)
     mp_timestamp = mp.Timestamp(int(time.time() * 100))
 

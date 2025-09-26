@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 # from email.mime import audio
 # from tkinter.tix import Tree  # Not used and causes import error
+from anyio import Path
 import cv2
 from pprint import pprint as _print
 import threading
@@ -94,7 +95,8 @@ class VideoCaptureThread:
         cv2.destroyAllWindows()
 
     def on_take_photo(self):
-        play_sound()
+        currentPath = Path(__file__).parent.parent
+        play_sound(f"{currentPath}/sounds/click.mp3")
         self.ProcessFrame = True
         self.TakePhoto = True
 

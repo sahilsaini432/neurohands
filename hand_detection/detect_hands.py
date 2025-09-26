@@ -98,6 +98,7 @@ def main():
         if args.live is True:
             # register events
             event_manager.add_listener("stop", on_stop_event)
+            event_manager.add_listener("save_take_photo", save_photo)
 
             # start video capture
             video_thread = VideoCaptureThread(args=args, hands=hands)
@@ -109,7 +110,16 @@ def main():
                 vc_thread = VoiceCommandThread(args=args)
                 vc_thread.start()
                 condition = video_thread.Running and vc_thread.Running
-                event_manager.add_listener("save_take_photo", save_photo)
+
+            # Show initial help message
+            print("\n=== Keyboard Controls (press keys while video window is in focus) ===")
+            print("q - Quit application")
+            print("p - Take photo")
+            if args.saveVideo:
+                print("r - Start recording")
+                print("s - Stop recording")
+            print("h - Show this help message again")
+            print("=====================================================================\n")
 
             # While the video thread is running
             while condition:
@@ -122,26 +132,42 @@ def main():
                     event_manager.trigger_event("save_take_photo", {"result": result})
 
                 # Check for key presses
-                if cv2.waitKey(1) and 0xFF == ord("q"):
+                key = cv2.waitKey(1) & 0xFF
+
+                if key == ord("q"):
                     # Exit Program
                     video_thread.stop()
                     if args.voice is True:
                         vc_thread.stop()
                     condition = False
 
+                # Take Photo
+                if key == ord("p"):
+                    event_manager.trigger_event("take_photo")
+                    print("📸 Photo taken!")
+
                 if args.saveVideo:
 
                     # Start Recording
-                    if cv2.waitKey(1) and 0xFF == ord("r"):
+                    if key == ord("r"):
                         video_thread.start_recording()
+                        print("🔴 Recording started...")
 
                     # Stop Recording
-                    if cv2.waitKey(1) and 0xFF == ord("s"):
+                    if key == ord("s"):
                         video_thread.stop_recording()
+                        print("⏹️  Recording stopped!")
 
-                # Take Photo
-                if cv2.waitKey(1) and 0xFF == ord("p"):
-                    video_thread.on_take_photo()
+                # Show help
+                if key == ord("h"):
+                    print("\n=== Keyboard Controls ===")
+                    print("q - Quit application")
+                    print("p - Take photo")
+                    if args.saveVideo:
+                        print("r - Start recording")
+                        print("s - Stop recording")
+                    print("h - Show this help")
+                    print("==========================")
 
         elif args.photo is True:
             if args.input is None:

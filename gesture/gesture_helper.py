@@ -4,11 +4,13 @@ import csv
 import numpy as np
 import pandas as PD
 from mediapipe.framework.formats import landmark_pb2
+
 # result classes
 from gesture_recognition_result import Gesture, HandLandmarks
 
 # for main thread issue
 import matplotlib
+
 matplotlib.use("MacOSX")
 from matplotlib import pyplot as plt
 
@@ -24,31 +26,36 @@ mp_drawing_styles = mp.solutions.drawing_styles
 
 Images = []
 
+
 def current_image(image):
     global Images
     Images.append(image)
 
+
 def last_image():
     global Images
     return Images.pop()
+
 
 def initialize_helper_variables(_args, _width, _height):
     global args, CAP_WIDTH, CAP_HEIGHT
     args = _args
     CAP_WIDTH = _width
     CAP_HEIGHT = _height
-    
+
     # load csv files
     reload_csv("gestures")
+
 
 def reload_csv(filename):
     global gestures_dataset
     global stored_gestures_names
-    gestures_dataset = PD.read_csv(f'{filename}.csv')
+    gestures_dataset = PD.read_csv(f"{filename}.csv")
     stored_gestures_names = gestures_dataset.iloc[:, 0].values
 
+
 def write_toCsv(filename, data):
-    with open(file=f"{filename}.csv", mode='a', newline='') as file:
+    with open(file=f"{filename}.csv", mode="a", newline="") as file:
         writer = csv.writer(file)
         writer.writerow(data)
 
@@ -56,11 +63,12 @@ def write_toCsv(filename, data):
         for row in data:
             file.write(" ".join(map(str, row)) + "\n")
 
+
 # convert mediapipe image to image compatible with cv2
 def mediapipe_image_to_matlike(mediapipe_image):
     # convert Mediapipe image to numpy array
     image_data = mediapipe_image.numpy_view()
-    
+
     if mediapipe_image.format == mp.ImageFormat.SRGB:
         image_array = np.frombuffer(image_data, dtype=np.uint8).reshape((CAP_HEIGHT, CAP_WIDTH, 3))
         image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
@@ -71,8 +79,9 @@ def mediapipe_image_to_matlike(mediapipe_image):
         raise ValueError("Unsupported image format")
     return image_array
 
+
 # create a gesture recognizer instance with the live stream mode:
-def process_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int): # type: ignore
+def process_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):  # type: ignore
     # if anything was found by the frame save the image to disk
     found_something = False
     if args.cgd is not None and len(result.gestures) > 0:
@@ -80,7 +89,9 @@ def process_result(result: mp.tasks.vision.GestureRecognizerResult, output_image
         found_something = True
         for index in range(0, len(result.gestures)):
             gesture = Gesture.from_category(result.gestures[index][0])
-            if gesture.categoryName != 'None' and not stored_gestures_names.__contains__(gesture.categoryName):
+            if gesture.categoryName != "None" and not stored_gestures_names.__contains__(
+                gesture.categoryName
+            ):
                 write_toCsv("gestures", gesture.csv_data())
                 reload_csv("gestures")
 
@@ -107,34 +118,41 @@ def process_result(result: mp.tasks.vision.GestureRecognizerResult, output_image
         except Exception as e:
             print(f"error showing the gesture recognition frame - {e}")
 
+
 def show_processed_image(image, result, timestamp):
     numpy_image = image.numpy_view()
     landmarks = result.hand_landmarks
-    if(len(landmarks) == 0): return
+    if len(landmarks) == 0:
+        return
 
     # Size and spacing.
     SPACING = 0.1
-    subplot=(1,1,1)
+    subplot = (1, 1, 1)
     annotated_image = numpy_image.copy()
     hand_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
-    
+
     for landmark in landmarks:
         hand_landmarks = HandLandmarks.from_normalized_list(landmark)
-        hand_landmarks_proto.landmark.extend([
-            landmark_pb2.NormalizedLandmark(x=_landmark.x, 
-                            y=_landmark.y, 
-                            z=_landmark.z, 
-                            visibility=_landmark.visibility, 
-                            presence =_landmark.presence)
-            for _landmark in hand_landmarks.landmarks
-        ])
+        hand_landmarks_proto.landmark.extend(
+            [
+                landmark_pb2.NormalizedLandmark(
+                    x=_landmark.x,
+                    y=_landmark.y,
+                    z=_landmark.z,
+                    visibility=_landmark.visibility,
+                    presence=_landmark.presence,
+                )
+                for _landmark in hand_landmarks.landmarks
+            ]
+        )
 
     test = mp_drawing.draw_landmarks(
         annotated_image,
         hand_landmarks_proto,
         mp_hands.HAND_CONNECTIONS,
         mp_drawing_styles.get_default_hand_landmarks_style(),
-        mp_drawing_styles.get_default_hand_connections_style())
+        mp_drawing_styles.get_default_hand_connections_style(),
+    )
 
     # display the image now
     plt.subplot(*subplot)
