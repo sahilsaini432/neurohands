@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
-from email.mime import audio
-from tkinter.tix import Tree
+
+# from email.mime import audio
+# from tkinter.tix import Tree  # Not used and causes import error
+from anyio import Path
 import cv2
 from pprint import pprint as _print
 import threading
@@ -27,6 +29,7 @@ class VideoCaptureThread:
     def __init__(self, args, hands):
         # Video Capture setup
         self.VideoCapture = cv2.VideoCapture(0)
+        self.RecordVideo = args.saveVideo
         self.Width = int(self.VideoCapture.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.Height = int(self.VideoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.Hands = hands
@@ -42,14 +45,6 @@ class VideoCaptureThread:
         # Video Setup
         self.VideoWriter = None
         self.SaveVideo = False
-
-        # if save recording is enabled, setup keyboard shortcuts to start and stop recording
-        if self.RecordVideo:
-            keyboard.add_hotkey("r", self.start_recording)
-            keyboard.add_hotkey("s", self.stop_recording)
-
-        # commands to take photo
-        keyboard.add_hotkey("p", self.on_take_photo)
 
         # Timed Loop Setup
         if args.time is not None:
@@ -100,7 +95,8 @@ class VideoCaptureThread:
         cv2.destroyAllWindows()
 
     def on_take_photo(self):
-        play_sound()
+        currentPath = Path(__file__).parent.parent
+        play_sound(f"{currentPath}/sounds/click.mp3")
         self.ProcessFrame = True
         self.TakePhoto = True
 
@@ -120,6 +116,7 @@ class VideoCaptureThread:
                 break
 
             frame = cv2.flip(frame, 1)
+            original_frame = frame.copy()  # Keep original frame for draw_gesture_for_fixed_frame
 
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             result = self.Hands.process(frame_rgb)
@@ -134,7 +131,7 @@ class VideoCaptureThread:
                 self.TakePhoto = False
 
             if result.multi_hand_landmarks and self.SaveVideo:
-                save_frame, _ = draw_gesture_for_fixed_frame(result=result)
+                save_frame, _ = draw_gesture_for_fixed_frame(result, original_frame)
                 self.VideoWriter.write(save_frame)
 
             if self.TimedLoop:

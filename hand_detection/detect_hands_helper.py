@@ -18,6 +18,7 @@ stop_program_event = Signal()
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
+current_frame = None
 save_width = 550
 save_height = 550
 
@@ -127,9 +128,20 @@ def add_text_to_frame(text, frame):
     return cv2.putText(frame, text, (x, y), font, font_scale, font_color, font_thickness)
 
 
-def draw_gesture_for_fixed_frame(result):
+def set_current_frame(frame):
+    global current_frame
+    current_frame = frame
+
+
+def draw_gesture_for_fixed_frame(result, frame=None):
     processed_hands = []
     metadata = {}
+
+    # Get frame dimensions - use frame if provided, otherwise use default values
+    if frame is not None:
+        frame_height, frame_width = frame.shape[:2]
+    else:
+        frame_height, frame_width = save_height, save_width
 
     if result.multi_handedness:
         for handedness in result.multi_handedness:
@@ -139,22 +151,22 @@ def draw_gesture_for_fixed_frame(result):
     index = 0
     if result.multi_hand_landmarks:
         for hand_landmarks in result.multi_hand_landmarks:
-            frame = np.zeros(shape=(save_height, save_width, 3), dtype=np.uint8)
-            frame = draw_in_center(frame=frame, hand_landmarks=hand_landmarks)
-            frame = add_text_to_frame(processed_hands[index], frame)
-            frames[processed_hands[index]] = frame
+            hand_frame = np.zeros(shape=(frame_height, frame_width, 3), dtype=np.uint8)
+            hand_frame = draw_in_center(frame=hand_frame, hand_landmarks=hand_landmarks)
+            hand_frame = add_text_to_frame(processed_hands[index], hand_frame)
+            frames[processed_hands[index]] = hand_frame
 
             # encoding hand landmarks
             encoded_landmarks = encode_hand_landmarks(hand_landmarks)
             metadata[processed_hands[index]] = encoded_landmarks
             index = index + 1
 
-    if len(frames.values()) == 1:
-        emptyFrame = np.zeros(shape=(save_height, save_width, 3), dtype=np.uint8)
-        if frames.keys().__contains__("Left"):
-            frames["Right"] = emptyFrame
-        else:
-            frames["Left"] = emptyFrame
+    # Ensure we always have Left and Right frames
+    emptyFrame = np.zeros(shape=(frame_height, frame_width, 3), dtype=np.uint8)
+    if "Left" not in frames:
+        frames["Left"] = emptyFrame
+    if "Right" not in frames:
+        frames["Right"] = emptyFrame
 
     return np.hstack((frames["Left"], frames["Right"])), metadata
 
@@ -182,7 +194,7 @@ def process_frame_from_filepath(hands, filepath):
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     result = hands.process(frame_rgb)
 
-    frame_to_save, metadata = draw_gesture_for_fixed_frame(result)
+    frame_to_save, metadata = draw_gesture_for_fixed_frame(result, frame=frame)
 
     # save the update frame
     filename = Path(filepath).name.split(".")
@@ -249,10 +261,15 @@ def draw_in_center(frame, hand_landmarks):
 
 
 def save_photo(data):
+    global totalPhotosTaken, current_frame
     photo_name = datetime.now().isoformat() + "Z"
     result = data["result"]
-    frame, metadata = draw_gesture_for_fixed_frame(result)
-    filename = f"./output_data/{photo_name}.png"
+    frame, metadata = draw_gesture_for_fixed_frame(result, current_frame)
+
+    path = Path(__file__).parent.parent
+    if not path.joinpath("output_data").exists():
+        path.joinpath("output_data").mkdir(parents=True, exist_ok=True)
+    filename = f"{path}/output_data/{photo_name}.png"
     save_photo_with_metadata(frame, metadata, filename)
     totalPhotosTaken += 1
     print(f"Photo saved: {filename} | Total Photos Taken: {totalPhotosTaken}")
