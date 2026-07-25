@@ -9,5 +9,5 @@ pyttsx3
 blinker
 gtts
 openai
-playsound
+playsound3
 keyboard
