@@ -1,0 +1,13 @@
+# macOS arm64 (M1/M2): run `brew install portaudio` first
+mediapipe
+matplotlib
+pyaudio
+numpy
+pandas
+SpeechRecognition
+pyttsx3
+blinker
+gtts
+openai
+playsound
+keyboard
