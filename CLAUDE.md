@@ -36,6 +36,23 @@ Live keyboard controls (video window must have focus): `q` quit, `p` photo, `r`/
 
 Voice commands (with `--voice`): "start/stop processing", "start/stop recording", "take/save photo", "exit/quit program".
 
+Dataset collection:
+
+```bash
+cd hand_detection
+python detect_hands.py --collect --label hello --signer sahil   # collect ASL samples
+python dataset_stats.py                                          # print dataset stats
+```
+
+Collect mode keyboard controls (video window must have focus):
+- `n` — set new label (prompts in terminal)
+- `m` — toggle static / sequence mode
+- `p` or `space` — capture static sample
+- `r` (hold) — record sequence; release to save
+- `q` — quit
+
+Samples written to `dataset/landmarks.jsonl` (JSONL, one record per line). Preview PNGs in `dataset/preview/<label>/`. See `dataset/README.md` for schema.
+
 Gesture experiment:
 
 ```bash
@@ -52,7 +69,9 @@ OpenAI script: needs `OPENAI_API_KEY` in a `.env` at repo root; the target `imag
 The live pipeline is multi-threaded and coordinated by a global event bus, not direct calls:
 
 - **`event_manager.py`** — a tiny global `event_manager` singleton (publish/subscribe). Threads communicate by triggering named events (`take_photo`, `start_recording`, `stop`, `speak`, etc.) rather than holding references to each other. This is the seam that decouples the voice thread, video thread, and main loop.
-- **`detect_hands.py`** — entry point and main loop. Owns the cv2 window and keyboard input. Pulls frames off `VideoCaptureThread.FrameQueue` to display, and pulls results off `PhotoQueue` to save. Registers `on_stop_event` and `save_photo` as event listeners.
+- **`detect_hands.py`** — entry point and main loop. Owns the cv2 window and keyboard input. Pulls frames off `VideoCaptureThread.FrameQueue` to display, and pulls results off `PhotoQueue` to save. Registers `on_stop_event` and `save_photo` as event listeners. Also hosts `--collect` mode via `_run_collect_mode`.
+- **`dataset_collector.py`** — `DatasetCollector` class. Manages current label, static/sequence mode, per-label counts. Writes JSONL records to `dataset/landmarks.jsonl` and preview PNGs to `dataset/preview/<label>/`. No cv2/threading dependencies.
+- **`dataset_stats.py`** — standalone reader: prints total samples, per-label counts, static/sequence split, avg sequence length.
 - **`media_capture.py`** — two threads:
   - `VideoCaptureThread`: reads the camera, runs MediaPipe `Hands`, draws landmarks, and pushes frames into bounded queues. Frames are flipped horizontally (mirror). A separate `original_frame` copy is kept for the fixed-size saved output.
   - `VoiceCommandThread`: `speech_recognition` (Google) → normalizes text to `snake_case` → matches substrings → triggers events. Speaks back via gTTS.

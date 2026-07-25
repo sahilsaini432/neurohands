@@ -42,6 +42,10 @@ class VideoCaptureThread:
         self.TakePhoto = False
         self.PhotoQueue = queue.Queue(maxsize=1)
 
+        # Sequence Setup
+        self.SequenceRecording = False
+        self.SequenceQueue = queue.Queue(maxsize=500)
+
         # Video Setup
         self.VideoWriter = None
         self.SaveVideo = False
@@ -130,12 +134,25 @@ class VideoCaptureThread:
                 self.PhotoQueue.put(result)
                 self.TakePhoto = False
 
+            if self.SequenceRecording:
+                try:
+                    self.SequenceQueue.put_nowait(result)
+                except queue.Full:
+                    pass
+
             if result.multi_hand_landmarks and self.SaveVideo:
                 save_frame, _ = draw_gesture_for_fixed_frame(result, original_frame)
                 self.VideoWriter.write(save_frame)
 
             if self.TimedLoop:
                 self.Running = datetime.now() < self.StartTime + self.Duration
+
+    def start_sequence(self):
+        self.SequenceQueue = queue.Queue(maxsize=500)
+        self.SequenceRecording = True
+
+    def stop_sequence(self):
+        self.SequenceRecording = False
 
     def stop(self):
         self.Running = False

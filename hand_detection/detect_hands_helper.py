@@ -260,6 +260,24 @@ def draw_in_center(frame, hand_landmarks):
     return frame
 
 
+def result_to_frame_dict(result) -> dict:
+    frame = {}
+    if not result.multi_hand_landmarks:
+        return frame
+    world_lms = result.multi_hand_world_landmarks or []
+    lm_indexes = [lm.value for lm in HandLandmark]
+    for i, handedness in enumerate(result.multi_handedness):
+        label = handedness.classification[0].label
+        norm_lms = result.multi_hand_landmarks[i]
+        norm = [[norm_lms.landmark[j].x, norm_lms.landmark[j].y, norm_lms.landmark[j].z] for j in lm_indexes]
+        world = []
+        if i < len(world_lms):
+            wlm = world_lms[i]
+            world = [[wlm.landmark[j].x, wlm.landmark[j].y, wlm.landmark[j].z] for j in lm_indexes]
+        frame[label] = {"norm": norm, "world": world}
+    return frame
+
+
 def save_photo(data):
     global totalPhotosTaken, current_frame
     photo_name = datetime.now().isoformat() + "Z"
